@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  USER
+}
+
+enum LessonStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  login        String    @unique
+  passwordHash String
+  name         String
+  firstName    String?
+  lastName     String?
+  phone        String?
+  avatarUrl    String?
+  role         Role      @default(USER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  taughtLessons  Lesson[]       @relation("TeacherLessons")
+  createdLessons Lesson[]       @relation("CreatedLessons")
+  comments       Comment[]
+  notes          TeacherNote[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  enrollments    Enrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([email])
+  @@map("users")
+}
+
+model Semester {
+  id          String   @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  description String?
+
+  schedules Schedule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startDate, endDate])
+  @@map("semesters")
+}
+
+model Schedule {
+  id          String   @id @default(cuid())
+  semesterId  String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+
+  semester Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([semesterId])
+  @@map("schedules")
+}
+
+model Lesson {
+  id          String    @id @default(cuid())
+  subject     String
+  teacherId   String?
+  room        String?
+  startsAt    DateTime
+  endsAt      DateTime
+  comment     String?
+  isRecurring Boolean   @default(false)
+  dayOfWeek   DayOfWeek?
+
+  scheduleId String?
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  teacher       User? @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: SetNull)
+  createdBy     String?
+  createdByUser User? @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  comments    Comment[]
+  notes       TeacherNote[]
+  enrollments Enrollment[]
+  attendance  Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([teacherId])
+  @@index([scheduleId])
+  @@map("lessons")
+}
+
+model Comment {
+  id       String  @id @default(cuid())
+  text     String
+  isPublic Boolean @default(true)
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model TeacherNote {
+  id        String  @id @default(cuid())
+  title     String?
+  content   String
+  isPrivate Boolean @default(true)
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId])
+  @@index([authorId])
+  @@map("teacher_notes")
+}
+
+model Enrollment {
+  id     String @id @default(cuid())
+  status String @default("active")
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  enrolledAt DateTime @default(now())
+
+  @@unique([lessonId, userId])
+  @@index([lessonId])
+  @@index([userId])
+  @@map("enrollments")
+}
+
+model Attendance {
+  id     String  @id @default(cuid())
+  status String
+  note   String?
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  userId String
+
+  date DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+  @@index([userId])
+  @@index([date])
+  @@map("attendance")
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  title   String
+  message String
+  type    String  @default("info")
+  isRead  Boolean @default(false)
+  link    String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String  @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

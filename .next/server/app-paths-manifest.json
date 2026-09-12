@@ -1,0 +1,9 @@
+{
+  "/api/admin/users/route": "app/api/admin/users/route.js",
+  "/api/schedule/route": "app/api/schedule/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/schedule/[id]/route": "app/api/schedule/[id]/route.js",
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/profile/page": "app/profile/page.js"
+}
