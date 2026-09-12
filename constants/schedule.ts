@@ -1,0 +1,49 @@
+export const TIME_SLOTS = [
+   '08:00',
+   '09:00',
+   '10:00',
+   '11:00',
+   '12:00',
+   '13:00',
+   '14:00',
+   '15:00',
+   '16:00',
+   '17:00',
+   '18:00',
+   '19:00',
+   '20:00',
+   '21:00',
+   '22:00',
+] as const
+
+export const DAYS_OF_WEEK = [
+   { key: 'MONDAY', label: 'Пн', short: 'Mon' },
+   { key: 'TUESDAY', label: 'Вт', short: 'Tue' },
+   { key: 'WEDNESDAY', label: 'Ср', short: 'Wed' },
+   { key: 'THURSDAY', label: 'Чт', short: 'Thu' },
+   { key: 'FRIDAY', label: 'Пт', short: 'Fri' },
+   { key: 'SATURDAY', label: 'Сб', short: 'Sat' },
+   { key: 'SUNDAY', label: 'Вс', short: 'Sun' },
+] as const
+export const monthNames = [
+   'января',
+   'февраля',
+   'марта',
+   'апреля',
+   'мая',
+   'июня',
+   'июля',
+   'августа',
+   'сентября',
+   'октября',
+   'ноября',
+   'декабря',
+]
+export const INITIAL_FORM = {
+   subject: '',
+   comment: '',
+   date: '',
+   dayOfWeek: 'MONDAY',
+   startTime: '09:00',
+   endTime: '10:30',
+}
