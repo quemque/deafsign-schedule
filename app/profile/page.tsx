@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { User, Mail, Shield, Calendar, ArrowLeft } from 'lucide-react'
+import { User, Mail, Shield, ArrowLeft, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function ProfilePage() {
    const [user, setUser] = useState<any>(null)
    const [loading, setLoading] = useState(true)
+   const [isLoggingOut, setIsLoggingOut] = useState(false)
+   const router = useRouter()
 
    useEffect(() => {
       fetch('/api/auth/me')
@@ -14,6 +17,21 @@ export default function ProfilePage() {
          .then((data) => setUser(data.user))
          .finally(() => setLoading(false))
    }, [])
+
+   const handleLogout = async () => {
+      setIsLoggingOut(true)
+      try {
+         await fetch('/api/auth/logout', {
+            credentials: 'include',
+            method: 'POST',
+         })
+      } catch (e) {
+         console.error('Ошибка выхода:', e)
+      } finally {
+         router.push('/login')
+         router.refresh()
+      }
+   }
 
    if (loading) {
       return (
@@ -111,6 +129,17 @@ export default function ProfilePage() {
                         </span>
                      </div>
                   </div>
+               </div>
+
+               <div className="mt-8 pt-6 border-t border-[#F0EDE8]">
+                  <button
+                     onClick={handleLogout}
+                     disabled={isLoggingOut}
+                     className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                     <LogOut className="w-4 h-4" />
+                     {isLoggingOut ? 'Выход...' : 'Выйти из аккаунта'}
+                  </button>
                </div>
             </div>
          </div>
