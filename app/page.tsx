@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useScheduleData } from '@/hooks/useScheduleData'
 import { useLessonForm } from '@/hooks/useLessonForm'
 import { useLessonDetails } from '@/hooks/useLessonDetails'
@@ -9,6 +10,7 @@ import { ScheduleSubHeader } from '@/components/schedule/ScheduleSubHeader'
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid'
 import { LessonDetailsModal } from '@/components/schedule/LessonDetailsModal'
 import { LessonFormModal } from '@/components/schedule/LessonFormModal'
+import { DeleteLessonConfirmModal } from '@/components/schedule/DeleteLessonConfirmModal'
 
 export default function SchedulePage() {
    const {
@@ -28,6 +30,8 @@ export default function SchedulePage() {
 
    const lessonForm = useLessonForm(refreshSchedule)
    const lessonDetails = useLessonDetails(refreshSchedule)
+
+   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
    const isAdmin = user?.role === 'ADMIN'
    const canEditComment = user?.role === 'ADMIN' || user?.role === 'TEACHER'
@@ -70,6 +74,7 @@ export default function SchedulePage() {
          {lessonDetails.activeLesson && !lessonForm.isOpen && (
             <LessonDetailsModal
                lesson={lessonDetails.activeLesson}
+               date={lessonDetails.selectedDate}
                isAdmin={isAdmin}
                canEditComment={canEditComment}
                commentText={lessonDetails.commentText}
@@ -80,7 +85,20 @@ export default function SchedulePage() {
                   lessonDetails.closeDetails()
                   lessonForm.openEdit(lesson)
                }}
-               onDelete={lessonDetails.deleteActiveLesson}
+               onDelete={() => setIsDeleteConfirmOpen(true)}
+            />
+         )}
+
+         {lessonDetails.activeLesson && (
+            <DeleteLessonConfirmModal
+               isOpen={isDeleteConfirmOpen}
+               isRecurring={lessonDetails.activeLesson.isRecurring}
+               date={lessonDetails.selectedDate}
+               onClose={() => setIsDeleteConfirmOpen(false)}
+               onConfirm={(mode) => {
+                  setIsDeleteConfirmOpen(false)
+                  lessonDetails.deleteActiveLesson(mode)
+               }}
             />
          )}
 

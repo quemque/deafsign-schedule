@@ -102,6 +102,7 @@ model Lesson {
   room        String?
   startsAt    DateTime
   endsAt      DateTime
+  endDate     DateTime?  
   isRecurring Boolean    @default(false)
   dayOfWeek   DayOfWeek?
 
@@ -112,18 +113,36 @@ model Lesson {
   createdBy     String?
   createdByUser User?    @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
 
-  comments    Comment[]
-  notes       TeacherNote[]
-  enrollments Enrollment[]
-  attendance  Attendance[]
+  comments      Comment[]
+  cancellations LessonCancellation[] 
+  notes         TeacherNote[]
+  enrollments   Enrollment[]
+  attendance    Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([startsAt])
+  @@index([endDate])
   @@index([teacherId])
   @@index([scheduleId])
   @@map("lessons")
+}
+
+model LessonCancellation {
+  id       String   @id @default(cuid())
+  date     DateTime @db.Date
+  reason   String?
+
+  lessonId String
+  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([lessonId, date])
+  @@index([lessonId])
+  @@index([date])
+  @@map("lesson_cancellations")
 }
 
 model Comment {

@@ -39,16 +39,49 @@ export async function PATCH(
 }
 
 export async function DELETE(
-   _req: NextRequest,
+   req: NextRequest,
    { params }: { params: Promise<{ id: string }> },
 ) {
    const { id } = await params
-
    const user = await getCurrentUser()
    if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
    }
 
+   const { searchParams } = new URL(req.url)
+   const mode = searchParams.get('mode') || 'all'
+   const dateStr = searchParams.get('date')
+
+   if (mode === 'this') {
+      if (!dateStr) {
+         return NextResponse.json({ error: 'Не указана дата' }, { status: 400 })
+      }
+      const targetDate = new Date(`${dateStr}T00:00:00.000Z`)
+
+      await prisma.lessonCancellation.upsert({
+         where: {
+            lessonId_date: { lessonId: id, date: targetDate },
+         },
+         create: { lessonId: id, date: targetDate },
+         update: {},
+      })
+      return NextResponse.json({ ok: true, mode: 'this' })
+   }
+
+   if (mode === 'future') {
+      if (!dateStr) {
+         return NextResponse.json({ error: 'Не указана дата' }, { status: 400 })
+      }
+      const cutoffDate = new Date(`${dateStr}T00:00:00.000Z`)
+      cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 1)
+
+      await prisma.lesson.update({
+         where: { id },
+         data: { endDate: cutoffDate },
+      })
+      return NextResponse.json({ ok: true, mode: 'future' })
+   }
+
    await prisma.lesson.delete({ where: { id } })
-   return NextResponse.json({ ok: true })
+   return NextResponse.json({ ok: true, mode: 'all' })
 }

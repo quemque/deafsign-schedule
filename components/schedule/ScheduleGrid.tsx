@@ -4,6 +4,7 @@ import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { TIME_SLOTS } from '@/constants/schedule'
 import { LessonCard } from './LessonCard'
+import { isLessonCancelledOnDate } from '@/utils/date'
 
 interface DayItem {
    key: string
@@ -127,14 +128,33 @@ export function ScheduleGrid({
                               </div>
                            )}
 
-                           {dayLessons.map((l) => (
-                              <LessonCard
-                                 key={l.id}
-                                 lesson={l}
-                                 dayDate={day.dateObj}
-                                 onClick={() => onSelectLesson(l, day.dateObj)}
-                              />
-                           ))}
+                           {dayLessons
+                              .filter((lesson) => {
+                                 if (
+                                    isLessonCancelledOnDate(lesson, day.dateObj)
+                                 )
+                                    return false
+
+                                 if (lesson.endDate) {
+                                    const dayStart = new Date(day.dateObj)
+                                    dayStart.setHours(0, 0, 0, 0)
+                                    const cutoff = new Date(lesson.endDate)
+                                    cutoff.setHours(23, 59, 59, 999)
+                                    if (dayStart > cutoff) return false
+                                 }
+
+                                 return true
+                              })
+                              .map((lesson) => (
+                                 <LessonCard
+                                    key={lesson.id}
+                                    lesson={lesson}
+                                    dayDate={day.dateObj}
+                                    onClick={() =>
+                                       onSelectLesson(lesson, day.dateObj)
+                                    }
+                                 />
+                              ))}
                         </div>
                      )
                   })}

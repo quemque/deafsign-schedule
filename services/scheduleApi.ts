@@ -1,4 +1,9 @@
-import type { ApiLesson, Teacher, CurrentUser } from '@/types/schedule'
+import type {
+   ApiLesson,
+   Teacher,
+   CurrentUser,
+   DeleteLessonMode,
+} from '@/types/schedule'
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
    const res = await fetch(url, options)
@@ -28,6 +33,19 @@ export const scheduleApi = {
          body: JSON.stringify(payload),
       }),
 
-   deleteLesson: (id: string) =>
-      request<void>(`/api/schedule/${id}`, { method: 'DELETE' }),
+   deleteLesson: (id: string, mode: DeleteLessonMode = 'all', date?: Date) => {
+      const params = new URLSearchParams({ mode })
+      if (date) {
+         const yyyy = date.getFullYear()
+         const mm = String(date.getMonth() + 1).padStart(2, '0')
+         const dd = String(date.getDate()).padStart(2, '0')
+         params.set('date', `${yyyy}-${mm}-${dd}`)
+      }
+      return request<{ ok: boolean }>(
+         `/api/schedule/${id}?${params.toString()}`,
+         {
+            method: 'DELETE',
+         },
+      )
+   },
 }

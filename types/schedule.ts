@@ -11,16 +11,27 @@ export interface LessonComment {
    authorId: string
 }
 
+export interface LessonCancellation {
+   id: string
+   date: string | Date
+   reason?: string | null
+   lessonId: string
+}
+
+export type DeleteLessonMode = 'this' | 'future' | 'all'
+
 export interface CurrentUser {
    id: string
    name: string
    role: 'ADMIN' | 'TEACHER' | 'USER'
 }
+
 export interface ApiLesson {
    id: string
    subject: string
    startsAt: string
    endsAt: string
+   endDate?: string | null
    isRecurring: boolean
    dayOfWeek?: string | null
    room?: string | null
@@ -29,4 +40,5 @@ export interface ApiLesson {
       name: string
    } | null
    comments?: LessonComment[]
+   cancellations?: LessonCancellation[]
 }

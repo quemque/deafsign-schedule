@@ -10,6 +10,7 @@ export async function GET() {
          include: {
             teacher: { select: { id: true, name: true } },
             comments: true,
+            cancellations: true,
          },
       })
       return NextResponse.json({ lessons })

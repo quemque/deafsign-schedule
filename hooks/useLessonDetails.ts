@@ -1,6 +1,6 @@
-// hooks/useLessonDetails.ts
 import { useState } from 'react'
-import type { ApiLesson } from '@/types/schedule'
+import type { ApiLesson, DeleteLessonMode } from '@/types/schedule'
+import { scheduleApi } from '@/services/scheduleApi'
 
 export function useLessonDetails(onUpdate?: () => void) {
    const [activeLesson, setActiveLesson] = useState<ApiLesson | null>(null)
@@ -50,14 +50,12 @@ export function useLessonDetails(onUpdate?: () => void) {
       }
    }
 
-   const deleteActiveLesson = async (id: string) => {
-      if (!confirm('Удалить занятие?')) return
+   const deleteActiveLesson = async (mode: DeleteLessonMode = 'all') => {
+      if (!activeLesson) return
       try {
-         const res = await fetch(`/api/schedule/${id}`, { method: 'DELETE' })
-         if (res.ok) {
-            closeDetails()
-            onUpdate?.()
-         }
+         await scheduleApi.deleteLesson(activeLesson.id, mode, selectedDate)
+         closeDetails()
+         onUpdate?.()
       } catch (err) {
          console.error('Ошибка удаления занятия:', err)
       }
