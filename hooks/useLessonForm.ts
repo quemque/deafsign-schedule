@@ -39,7 +39,7 @@ export function useLessonForm(onSuccess?: () => void) {
 
       setForm({
          subject: lesson.subject,
-         comment: lesson.comment || '',
+         comment: '',
          date: `${yyyy}-${mm}-${dd}`,
          dayOfWeek: lesson.dayOfWeek || 'MONDAY',
          startTime: formatTime(lesson.startsAt),

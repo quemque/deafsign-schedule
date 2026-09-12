@@ -13,6 +13,7 @@ import type { ApiLesson } from '@/types/schedule'
 
 interface LessonDetailsModalProps {
    lesson: ApiLesson
+   date?: Date
    isAdmin: boolean
    canEditComment: boolean
    commentText: string
@@ -25,6 +26,7 @@ interface LessonDetailsModalProps {
 
 export function LessonDetailsModal({
    lesson,
+   date,
    isAdmin,
    canEditComment,
    commentText,
@@ -40,6 +42,9 @@ export function LessonDetailsModal({
          hour: '2-digit',
          minute: '2-digit',
       })
+
+   // Используем переданную дату дня или дату из начала урока
+   const displayDate = date || new Date(lesson.startsAt)
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C2824]/40 backdrop-blur-xs animate-in fade-in duration-200">
@@ -58,8 +63,8 @@ export function LessonDetailsModal({
                      </span>
                   )}
                   <span className="text-[11px] font-medium text-[#8B857D] bg-white px-2 py-1 rounded-md border border-[#E5E0D8]">
-                     {new Date(lesson.startsAt).toLocaleDateString('ru-RU', {
-                        timeZone: 'UTC',
+                     {displayDate.toLocaleDateString('ru-RU', {
+                        timeZone: date ? undefined : 'UTC',
                         day: 'numeric',
                         month: 'long',
                      })}
@@ -127,7 +132,7 @@ export function LessonDetailsModal({
                         <textarea
                            value={commentText}
                            onChange={(e) => onCommentTextChange(e.target.value)}
-                           placeholder="Добавить комментарий..."
+                           placeholder="Добавить комментарий на этот день"
                            className="w-full bg-[#FDFCFB] border border-[#F0EDE8] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#8BA888]"
                            rows={3}
                         />
@@ -139,8 +144,8 @@ export function LessonDetailsModal({
                         </button>
                      </div>
                   ) : (
-                     <p className="text-[11px] sm:text-sm text-[#5A534A] leading-relaxed bg-[#FDFCFB]/50 p-3 sm:p-4 rounded-xl border border-[#F0EDE8]">
-                        {lesson.comment || 'Нет комментариев'}
+                     <p className="text-[11px] sm:text-sm text-[#5A534A] leading-relaxed bg-[#FDFCFB]/50 p-3 sm:p-4 rounded-xl border border-[#F0EDE8] whitespace-pre-wrap">
+                        {commentText ? commentText : 'Нет комментариев'}
                      </p>
                   )}
                </div>

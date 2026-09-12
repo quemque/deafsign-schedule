@@ -9,15 +9,12 @@ export async function GET() {
          orderBy: { startsAt: 'asc' },
          include: {
             teacher: { select: { id: true, name: true } },
+            comments: true,
          },
       })
-
       return NextResponse.json({ lessons })
    } catch (error) {
-      return NextResponse.json(
-         { error: 'Ошибка при получении расписания' },
-         { status: 500 },
-      )
+      return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
    }
 }
 
@@ -34,7 +31,6 @@ export async function POST(req: NextRequest) {
          subject,
          teacherId,
          room,
-         comment,
          isRecurring,
          date,
          dayOfWeek,
@@ -109,13 +105,13 @@ export async function POST(req: NextRequest) {
             room: room || null,
             startsAt,
             endsAt,
-            comment: comment || null,
             isRecurring: recurring,
             dayOfWeek: resolvedDayOfWeek,
             createdBy: user.id,
          },
          include: {
             teacher: { select: { id: true, name: true } },
+            comments: true,
          },
       })
 

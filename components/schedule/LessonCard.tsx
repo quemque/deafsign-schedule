@@ -5,10 +5,11 @@ import type { ApiLesson } from '@/types/schedule'
 
 interface LessonCardProps {
    lesson: ApiLesson
+   dayDate: Date
    onClick: () => void
 }
 
-export function LessonCard({ lesson, onClick }: LessonCardProps) {
+export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
    const startsAt = new Date(lesson.startsAt)
    const endsAt = new Date(lesson.endsAt)
 
@@ -27,6 +28,20 @@ export function LessonCard({ lesson, onClick }: LessonCardProps) {
          hour: '2-digit',
          minute: '2-digit',
       })
+
+   // Формируем YYYY-MM-DD для текущего дня карточки
+   const yyyy = dayDate.getFullYear()
+   const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
+   const dd = String(dayDate.getDate()).padStart(2, '0')
+   const dateKey = `${yyyy}-${mm}-${dd}`
+
+   // Ищем комментарий, привязанный к этой дате
+   const currentComment =
+      lesson.comments?.find((c) => {
+         const commentDateStr =
+            typeof c.date === 'string' ? c.date : new Date(c.date).toISOString()
+         return commentDateStr.startsWith(dateKey)
+      })?.text || ''
 
    return (
       <div
@@ -58,10 +73,10 @@ export function LessonCard({ lesson, onClick }: LessonCardProps) {
                      </span>
                   )}
                </div>
-               {lesson.comment && (
+               {currentComment && (
                   <div className="flex items-center gap-1 text-[9px] text-[#5A534A] opacity-70 italic mt-0.5">
                      <MessageSquare className="w-2.5 h-2.5 shrink-0" />
-                     <span className="truncate">{lesson.comment}</span>
+                     <span className="truncate">{currentComment}</span>
                   </div>
                )}
             </div>

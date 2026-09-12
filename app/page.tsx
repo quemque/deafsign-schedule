@@ -60,7 +60,9 @@ export default function SchedulePage() {
                   currentTime={currentTime}
                   visibleLessons={visibleLessons}
                   onSelectDate={setCurrentDate}
-                  onSelectLesson={lessonDetails.openDetails}
+                  onSelectLesson={(lesson, dayDate) =>
+                     lessonDetails.openDetails(lesson, dayDate)
+                  }
                />
             )}
          </main>

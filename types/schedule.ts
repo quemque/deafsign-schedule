@@ -3,6 +3,14 @@ export interface Teacher {
    name: string
 }
 
+export interface LessonComment {
+   id: string
+   text: string
+   date: string | Date
+   lessonId: string
+   authorId: string
+}
+
 export interface CurrentUser {
    id: string
    name: string
@@ -11,12 +19,14 @@ export interface CurrentUser {
 export interface ApiLesson {
    id: string
    subject: string
-   teacherId: string | null
-   teacher: { id: string; name: string } | null
-   room: string | null
    startsAt: string
    endsAt: string
-   comment: string | null
    isRecurring: boolean
-   dayOfWeek: string | null
+   dayOfWeek?: string | null
+   room?: string | null
+   teacher?: {
+      id: string
+      name: string
+   } | null
+   comments?: LessonComment[]
 }

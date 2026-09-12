@@ -20,7 +20,7 @@ interface ScheduleGridProps {
    currentTime: Date
    visibleLessons: ApiLesson[]
    onSelectDate: (date: Date) => void
-   onSelectLesson: (lesson: ApiLesson) => void
+   onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
 }
 
 export function ScheduleGrid({
@@ -131,7 +131,8 @@ export function ScheduleGrid({
                               <LessonCard
                                  key={l.id}
                                  lesson={l}
-                                 onClick={() => onSelectLesson(l)}
+                                 dayDate={day.dateObj}
+                                 onClick={() => onSelectLesson(l, day.dateObj)}
                               />
                            ))}
                         </div>
