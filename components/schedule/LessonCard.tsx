@@ -26,6 +26,7 @@ const INDEX_TO_DAY = [
 interface LessonCardProps {
    lesson: ApiLesson
    dayDate: Date
+   baseHour?: number
    onClick: () => void
 }
 
@@ -92,7 +93,12 @@ function getLessonIndex(lesson: ApiLesson, dayDate: Date): number | null {
    return index <= lesson.totalLessons ? index : null
 }
 
-export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
+export function LessonCard({
+   lesson,
+   dayDate,
+   baseHour = 8,
+   onClick,
+}: LessonCardProps) {
    const yyyy = dayDate.getFullYear()
    const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
    const dd = String(dayDate.getDate()).padStart(2, '0')
@@ -117,9 +123,8 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
       activeEndsAt = new Date(rescheduleSlot.newEndsAt)
    } else if (
       lesson.isRecurring &&
-      customDayTime &&
-      customDayTime.startTime &&
-      customDayTime.endTime
+      customDayTime?.startTime &&
+      customDayTime?.endTime
    ) {
       const [sh, sm] = customDayTime.startTime.split(':').map(Number)
       const [eh, em] = customDayTime.endTime.split(':').map(Number)
@@ -134,14 +139,15 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
       activeEndsAt = new Date(lesson.endsAt)
    }
 
-   const startMinutesFrom8 =
-      (activeStartsAt.getUTCHours() - 8) * 60 + activeStartsAt.getUTCMinutes()
+   const startMinutesFromBase =
+      (activeStartsAt.getUTCHours() - baseHour) * 60 +
+      activeStartsAt.getUTCMinutes()
    const durationMinutes =
       (activeEndsAt.getTime() - activeStartsAt.getTime()) / 60000
 
-   if (startMinutesFrom8 < 0) return null
+   if (startMinutesFromBase < 0) return null
 
-   const topPx = (startMinutesFrom8 / 60) * 96
+   const topPx = (startMinutesFromBase / 60) * 96
    const heightPx = Math.max((durationMinutes / 60) * 96, 56)
 
    const formatTime = (d: Date) =>

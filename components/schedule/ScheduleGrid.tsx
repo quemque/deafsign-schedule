@@ -1,10 +1,20 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
-import { TIME_SLOTS } from '@/constants/schedule'
 import { LessonCard } from './LessonCard'
 import { isLessonActiveOnDate, getLessonRescheduleTarget } from '@/utils/date'
+
+const INDEX_TO_DAY = [
+   'SUNDAY',
+   'MONDAY',
+   'TUESDAY',
+   'WEDNESDAY',
+   'THURSDAY',
+   'FRIDAY',
+   'SATURDAY',
+]
 
 interface DayItem {
    key: string
@@ -24,6 +34,52 @@ interface ScheduleGridProps {
    onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
 }
 
+function getLessonTimes(lesson: ApiLesson, dayDate: Date) {
+   const yyyy = dayDate.getFullYear()
+   const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
+   const dd = String(dayDate.getDate()).padStart(2, '0')
+   const dateKey = `${yyyy}-${mm}-${dd}`
+   const dayKey = INDEX_TO_DAY[dayDate.getDay()]
+
+   const rescheduleSlot = lesson.reschedules?.find((r) => {
+      const rDateStr =
+         typeof r.newStartsAt === 'string'
+            ? r.newStartsAt.split('T')[0]
+            : new Date(r.newStartsAt).toISOString().split('T')[0]
+      return rDateStr === dateKey
+   })
+
+   if (rescheduleSlot) {
+      return {
+         startsAt: new Date(rescheduleSlot.newStartsAt),
+         endsAt: new Date(rescheduleSlot.newEndsAt),
+      }
+   }
+
+   const customDayTime = lesson.timeByDay?.[dayKey]
+   if (
+      lesson.isRecurring &&
+      customDayTime?.startTime &&
+      customDayTime?.endTime
+   ) {
+      const [sh, sm] = customDayTime.startTime.split(':').map(Number)
+      const [eh, em] = customDayTime.endTime.split(':').map(Number)
+      return {
+         startsAt: new Date(
+            Date.UTC(yyyy, dayDate.getMonth(), dayDate.getDate(), sh, sm, 0),
+         ),
+         endsAt: new Date(
+            Date.UTC(yyyy, dayDate.getMonth(), dayDate.getDate(), eh, em, 0),
+         ),
+      }
+   }
+
+   return {
+      startsAt: new Date(lesson.startsAt),
+      endsAt: new Date(lesson.endsAt),
+   }
+}
+
 export function ScheduleGrid({
    weekDates,
    currentDate,
@@ -32,11 +88,66 @@ export function ScheduleGrid({
    onSelectDate,
    onSelectLesson,
 }: ScheduleGridProps) {
+   const { startHour, endHour, timeSlots } = useMemo(() => {
+      let minMinutes = Infinity
+      let maxMinutes = -Infinity
+
+      weekDates.forEach((day) => {
+         const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
+
+         visibleLessons.forEach((lesson) => {
+            const isRescheduledToThisDay = Boolean(
+               getLessonRescheduleTarget(lesson, day.dateObj),
+            )
+
+            const matchesDay = lesson.isRecurring
+               ? (lesson.daysOfWeek && lesson.daysOfWeek.length > 0
+                    ? lesson.daysOfWeek.includes(day.key)
+                    : lesson.dayOfWeek === day.key) || isRescheduledToThisDay
+               : new Date(lesson.startsAt).toISOString().split('T')[0] ===
+                    dayKeyDate || isRescheduledToThisDay
+
+            if (matchesDay && isLessonActiveOnDate(lesson, day.dateObj)) {
+               const { startsAt, endsAt } = getLessonTimes(lesson, day.dateObj)
+               const sMin =
+                  startsAt.getUTCHours() * 60 + startsAt.getUTCMinutes()
+               const eMin = endsAt.getUTCHours() * 60 + endsAt.getUTCMinutes()
+
+               if (sMin < minMinutes) minMinutes = sMin
+               if (eMin > maxMinutes) maxMinutes = eMin
+            }
+         })
+      })
+
+      if (minMinutes === Infinity || maxMinutes === -Infinity) {
+         minMinutes = 8 * 60
+         maxMinutes = 20 * 60
+      }
+
+      const sHour = Math.max(0, Math.floor(minMinutes / 60))
+      const eHour = Math.min(24, Math.ceil(maxMinutes / 60))
+
+      const slots: string[] = []
+      for (let h = sHour; h < eHour; h++) {
+         slots.push(`${String(h).padStart(2, '0')}:00`)
+      }
+
+      return {
+         startHour: sHour,
+         endHour: eHour,
+         timeSlots: slots,
+      }
+   }, [weekDates, visibleLessons])
+
+   const totalHours = Math.max(1, endHour - startHour)
+   const totalHeightPx = totalHours * 96
+
    const getCurrentTimePosition = () => {
       const hours = currentTime.getHours()
       const minutes = currentTime.getMinutes()
-      const startMinutesFrom8 = hours * 60 + minutes - 8 * 60
-      return (startMinutesFrom8 / 60) * 96
+      const currentTotalMin = hours * 60 + minutes
+      const startTotalMin = startHour * 60
+      return ((currentTotalMin - startTotalMin) / 60) * 96
    }
 
    return (
@@ -77,9 +188,12 @@ export function ScheduleGrid({
                   })}
                </div>
 
-               <div className="grid grid-cols-[50px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] relative min-h-[1440px]">
+               <div
+                  className="grid grid-cols-[50px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] relative"
+                  style={{ minHeight: `${totalHeightPx}px` }}
+               >
                   <div className="bg-[#FDFCFB] flex flex-col text-right select-none sticky left-0 z-30 border-r border-[#E5E0D8]">
-                     {TIME_SLOTS.map((time) => (
+                     {timeSlots.map((time) => (
                         <div
                            key={time}
                            className="h-24 border-b border-[#F0EDE8] text-[10px] sm:text-[11px] text-[#B0A89E] font-medium pt-1 sm:pt-2 pr-1 sm:pr-2 bg-[#FDFCFB]"
@@ -115,6 +229,9 @@ export function ScheduleGrid({
                         return isLessonActiveOnDate(l, day.dateObj)
                      })
 
+                     const nowPos = getCurrentTimePosition()
+                     const isNowVisible = nowPos >= 0 && nowPos <= totalHeightPx
+
                      return (
                         <div
                            key={day.key}
@@ -122,19 +239,17 @@ export function ScheduleGrid({
                               isSelected ? 'block' : 'hidden sm:block'
                            } ${day.isToday ? 'bg-[#E8F0E8]/10' : 'bg-white'}`}
                         >
-                           {TIME_SLOTS.map((time) => (
+                           {timeSlots.map((time) => (
                               <div
                                  key={time}
                                  className="h-24 border-b border-[#F0EDE8]/80 w-full"
                               />
                            ))}
 
-                           {day.isToday && (
+                           {day.isToday && isNowVisible && (
                               <div
                                  className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                                 style={{
-                                    top: `${getCurrentTimePosition()}px`,
-                                 }}
+                                 style={{ top: `${nowPos}px` }}
                               >
                                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#8BA888] -ml-[3px] sm:-ml-1 ring-4 ring-[#8BA888]/20" />
                                  <div className="flex-1 h-[2px] bg-[#8BA888]/70" />
@@ -146,6 +261,7 @@ export function ScheduleGrid({
                                  key={lesson.id}
                                  lesson={lesson}
                                  dayDate={day.dateObj}
+                                 baseHour={startHour}
                                  onClick={() =>
                                     onSelectLesson(lesson, day.dateObj)
                                  }
