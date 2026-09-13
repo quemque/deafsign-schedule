@@ -46,4 +46,9 @@ export const INITIAL_FORM = {
    dayOfWeek: 'MONDAY',
    startTime: '09:00',
    endTime: '10:30',
+   room: '',
+   teacherId: '',
+   customTeacherName: '',
+   color: '#8BA888',
+   totalLessons: '',
 }

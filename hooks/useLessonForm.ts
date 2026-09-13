@@ -1,6 +1,5 @@
-// hooks/useLessonForm.ts
 import { useState } from 'react'
-import type { ApiLesson } from '@/types/schedule'
+import type { ApiLesson, FormDataState } from '@/types/schedule'
 import { INITIAL_FORM } from '@/constants/schedule'
 import { scheduleApi } from '@/services/scheduleApi'
 
@@ -8,7 +7,7 @@ export function useLessonForm(onSuccess?: () => void) {
    const [isOpen, setIsOpen] = useState(false)
    const [selectedLesson, setSelectedLesson] = useState<ApiLesson | null>(null)
    const [mode, setMode] = useState<'once' | 'weekly'>('once')
-   const [form, setForm] = useState(INITIAL_FORM)
+   const [form, setForm] = useState<FormDataState>(INITIAL_FORM)
    const [error, setError] = useState('')
 
    const openCreate = (currentDate: Date) => {
@@ -18,7 +17,22 @@ export function useLessonForm(onSuccess?: () => void) {
       const mm = String(currentDate.getMonth() + 1).padStart(2, '0')
       const dd = String(currentDate.getDate()).padStart(2, '0')
 
-      setForm({ ...INITIAL_FORM, date: `${yyyy}-${mm}-${dd}` })
+      const dayKeys = [
+         'SUNDAY',
+         'MONDAY',
+         'TUESDAY',
+         'WEDNESDAY',
+         'THURSDAY',
+         'FRIDAY',
+         'SATURDAY',
+      ]
+      const currentDayKey = dayKeys[currentDate.getDay()]
+
+      setForm({
+         ...INITIAL_FORM,
+         date: `${yyyy}-${mm}-${dd}`,
+         dayOfWeek: currentDayKey,
+      })
       setError('')
       setIsOpen(true)
    }
@@ -44,6 +58,11 @@ export function useLessonForm(onSuccess?: () => void) {
          dayOfWeek: lesson.dayOfWeek || 'MONDAY',
          startTime: formatTime(lesson.startsAt),
          endTime: formatTime(lesson.endsAt),
+         room: '',
+         teacherId: lesson.teacher?.id || lesson.teacherId || '',
+         customTeacherName: lesson.customTeacherName || '',
+         color: lesson.color || '#8BA888',
+         totalLessons: lesson.totalLessons ? String(lesson.totalLessons) : '',
       })
       setMode(lesson.isRecurring ? 'weekly' : 'once')
       setError('')
@@ -61,18 +80,21 @@ export function useLessonForm(onSuccess?: () => void) {
       setError('')
 
       const payload = selectedLesson
-         ? { subject: form.subject, comment: form.comment }
+         ? {
+              subject: form.subject,
+              teacherId: form.teacherId || null,
+              customTeacherName: form.customTeacherName || null,
+              color: form.color,
+              totalLessons: form.totalLessons
+                 ? Number(form.totalLessons)
+                 : null,
+           }
          : {
               ...form,
+              totalLessons: form.totalLessons
+                 ? Number(form.totalLessons)
+                 : null,
               isRecurring: mode === 'weekly',
-              startsAt:
-                 mode === 'once'
-                    ? `${form.date}T${form.startTime}:00Z`
-                    : undefined,
-              endsAt:
-                 mode === 'once'
-                    ? `${form.date}T${form.endTime}:00Z`
-                    : undefined,
            }
 
       try {

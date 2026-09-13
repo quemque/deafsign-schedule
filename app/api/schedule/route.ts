@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
       const {
          subject,
          teacherId,
-         room,
+         customTeacherName,
+         color,
+         totalLessons,
          isRecurring,
          date,
          dayOfWeek,
@@ -56,9 +58,9 @@ export async function POST(req: NextRequest) {
       let resolvedDayOfWeek: DayOfWeek | null = null
 
       if (isRecurring) {
-         if (!dayOfWeek || !startTime || !endTime) {
+         if (!dayOfWeek || !startTime || !endTime || !date) {
             return NextResponse.json(
-               { error: 'Укажите день недели и время' },
+               { error: 'Укажите дату начала, день недели и время' },
                { status: 400 },
             )
          }
@@ -66,34 +68,22 @@ export async function POST(req: NextRequest) {
          recurring = true
          resolvedDayOfWeek = dayOfWeek as DayOfWeek
 
-         const dayMap: Record<string, number> = {
-            SUNDAY: 0,
-            MONDAY: 1,
-            TUESDAY: 2,
-            WEDNESDAY: 3,
-            THURSDAY: 4,
-            FRIDAY: 5,
-            SATURDAY: 6,
-         }
-
-         const anchor = new Date(Date.UTC(2026, 0, 4))
-         const offset = dayMap[dayOfWeek] - anchor.getUTCDay()
-         anchor.setUTCDate(anchor.getUTCDate() + offset)
-
          const [sh, sm] = startTime.split(':').map(Number)
          const [eh, em] = endTime.split(':').map(Number)
+         const [y, m, d] = date.split('-').map(Number)
 
-         startsAt = new Date(anchor)
-         startsAt.setUTCHours(sh, sm, 0, 0)
-
-         endsAt = new Date(anchor)
-         endsAt.setUTCHours(eh, em, 0, 0)
+         startsAt = new Date(Date.UTC(y, m - 1, d, sh, sm, 0, 0))
+         endsAt = new Date(Date.UTC(y, m - 1, d, eh, em, 0, 0))
       } else if (rawStartsAt && rawEndsAt) {
          startsAt = new Date(rawStartsAt)
          endsAt = new Date(rawEndsAt)
       } else if (date && startTime && endTime) {
-         startsAt = new Date(`${date}T${startTime}:00`)
-         endsAt = new Date(`${date}T${endTime}:00`)
+         const [sh, sm] = startTime.split(':').map(Number)
+         const [eh, em] = endTime.split(':').map(Number)
+         const [y, m, d] = date.split('-').map(Number)
+
+         startsAt = new Date(Date.UTC(y, m - 1, d, sh, sm, 0, 0))
+         endsAt = new Date(Date.UTC(y, m - 1, d, eh, em, 0, 0))
       } else {
          return NextResponse.json(
             { error: 'Укажите дату и время' },
@@ -105,7 +95,13 @@ export async function POST(req: NextRequest) {
          data: {
             subject,
             teacherId: teacherId || null,
-            room: room || null,
+            customTeacherName: customTeacherName
+               ? customTeacherName.trim()
+               : null,
+            room: null,
+            color: color || '#8BA888',
+            totalLessons:
+               recurring && totalLessons ? Number(totalLessons) : null,
             startsAt,
             endsAt,
             isRecurring: recurring,
@@ -115,6 +111,7 @@ export async function POST(req: NextRequest) {
          include: {
             teacher: { select: { id: true, name: true } },
             comments: true,
+            cancellations: true,
          },
       })
 

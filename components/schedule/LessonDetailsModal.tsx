@@ -2,7 +2,6 @@
 
 import {
    Clock,
-   MapPin,
    User as UserIcon,
    X,
    Edit,
@@ -24,6 +23,20 @@ interface LessonDetailsModalProps {
    onDelete: (id: string) => void
 }
 
+function renderTeacherName(fullName: string) {
+   const parts = fullName.trim().split(/\s+/)
+   if (!parts[0]) return null
+
+   const [lastName, ...rest] = parts
+
+   return (
+      <span>
+         <span className="text-red-500 font-bold">{lastName}</span>
+         {rest.length > 0 ? ` ${rest.join(' ')}` : ''}
+      </span>
+   )
+}
+
 export function LessonDetailsModal({
    lesson,
    date,
@@ -43,23 +56,36 @@ export function LessonDetailsModal({
          minute: '2-digit',
       })
 
-   // Используем переданную дату дня или дату из начала урока
    const displayDate = date || new Date(lesson.startsAt)
+   const teacherDisplayName = lesson.customTeacherName || lesson.teacher?.name
+   const baseColor = lesson.color || '#8BA888'
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C2824]/40 backdrop-blur-xs animate-in fade-in duration-200">
          <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
-            <div className="p-4 sm:p-6 border-b bg-[#F5F2ED] border-[#E5E0D8] relative shrink-0">
+            <div
+               style={{ backgroundColor: `${baseColor}15` }}
+               className="p-4 sm:p-6 border-b border-[#E5E0D8] relative shrink-0"
+            >
                <button
                   onClick={onClose}
                   className="absolute top-4 right-4 p-2 rounded-full bg-white/80 hover:bg-white text-[#8B857D] transition-colors"
                >
                   <X className="w-4 h-4" />
                </button>
+
                <div className="flex items-center gap-2 mb-2 pr-8 flex-wrap">
                   {lesson.isRecurring && (
-                     <span className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white border border-[#E5E0D8] text-[#8BA888]">
-                        ЕЖЕНЕДЕЛЬНО
+                     <span
+                        style={{
+                           color: baseColor,
+                           borderColor: `${baseColor}50`,
+                        }}
+                        className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white border"
+                     >
+                        {lesson.totalLessons
+                           ? `КУРС (${lesson.totalLessons} ЗАНЯТИЙ)`
+                           : 'ЕЖЕНЕДЕЛЬНО'}
                      </span>
                   )}
                   <span className="text-[11px] font-medium text-[#8B857D] bg-white px-2 py-1 rounded-md border border-[#E5E0D8]">
@@ -70,14 +96,19 @@ export function LessonDetailsModal({
                      })}
                   </span>
                </div>
+
                <h2 className="text-lg sm:text-xl font-extrabold text-[#3E3A35] pr-8 leading-tight">
                   {lesson.subject}
                </h2>
             </div>
+
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto custom-scrollbar flex-1">
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FDFCFB] border border-[#F0EDE8]">
-                     <div className="p-2 rounded-lg bg-white shadow-xs text-[#5A7A5A] shrink-0">
+                     <div
+                        style={{ color: baseColor }}
+                        className="p-2 rounded-lg bg-white shadow-xs shrink-0"
+                     >
                         <Clock className="w-4 h-4" />
                      </div>
                      <div className="min-w-0">
@@ -90,38 +121,40 @@ export function LessonDetailsModal({
                         </span>
                      </div>
                   </div>
-                  {lesson.room && (
+
+                  {teacherDisplayName ? (
                      <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FDFCFB] border border-[#F0EDE8]">
-                        <div className="p-2 rounded-lg bg-white shadow-xs text-[#5A7A5A] shrink-0">
-                           <MapPin className="w-4 h-4" />
+                        <div
+                           style={{ color: baseColor }}
+                           className="p-2 rounded-lg bg-white shadow-xs shrink-0"
+                        >
+                           <UserIcon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
                            <span className="block text-[10px] sm:text-[11px] font-medium text-[#B0A89E] uppercase">
-                              Аудитория
+                              Преподаватель
                            </span>
                            <span className="text-[11px] sm:text-xs font-bold text-[#3E3A35] truncate block">
-                              {lesson.room}
+                              {renderTeacherName(teacherDisplayName)}
+                           </span>
+                        </div>
+                     </div>
+                  ) : (
+                     <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FDFCFB] border border-[#F0EDE8]">
+                        <div className="p-2 rounded-lg bg-white shadow-xs text-gray-400 shrink-0">
+                           <UserIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                           <span className="block text-[10px] sm:text-[11px] font-medium text-[#B0A89E] uppercase">
+                              Преподаватель
+                           </span>
+                           <span className="text-[11px] sm:text-xs text-[#8B857D] italic truncate block">
+                              Не назначен
                            </span>
                         </div>
                      </div>
                   )}
                </div>
-
-               {lesson.teacher && (
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-[#FDFCFB] border border-[#F0EDE8]">
-                     <div className="p-2 rounded-lg bg-white shadow-xs text-[#5A7A5A] shrink-0">
-                        <UserIcon className="w-4 h-4" />
-                     </div>
-                     <div className="min-w-0">
-                        <span className="block text-[10px] sm:text-[11px] font-medium text-[#B0A89E] uppercase">
-                           Преподаватель
-                        </span>
-                        <span className="text-[11px] sm:text-xs font-bold text-[#3E3A35] truncate block">
-                           {lesson.teacher.name}
-                        </span>
-                     </div>
-                  </div>
-               )}
 
                <div>
                   <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#B0A89E] mb-2 flex items-center gap-1.5">
@@ -132,7 +165,7 @@ export function LessonDetailsModal({
                         <textarea
                            value={commentText}
                            onChange={(e) => onCommentTextChange(e.target.value)}
-                           placeholder="Добавить комментарий на этот день"
+                           placeholder="Добавить комментарий на этот день..."
                            className="w-full bg-[#FDFCFB] border border-[#F0EDE8] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#8BA888]"
                            rows={3}
                         />
@@ -156,12 +189,14 @@ export function LessonDetailsModal({
                      <button
                         onClick={() => onDelete(lesson.id)}
                         className="flex-1 sm:flex-none flex justify-center p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
+                        title="Удалить занятие"
                      >
                         <Trash2 className="w-4 h-4" />
                      </button>
                      <button
                         onClick={() => onEdit(lesson)}
                         className="flex-1 sm:flex-none flex justify-center p-2 rounded-lg bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#8B857D] transition-colors"
+                        title="Редактировать занятие"
                      >
                         <Edit className="w-4 h-4" />
                      </button>
@@ -171,7 +206,8 @@ export function LessonDetailsModal({
                )}
                <button
                   onClick={onClose}
-                  className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold bg-[#8BA888] hover:bg-[#7A9A77] text-white rounded-xl transition-colors"
+                  style={{ backgroundColor: baseColor }}
+                  className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white rounded-xl transition-opacity hover:opacity-90"
                >
                   Закрыть
                </button>

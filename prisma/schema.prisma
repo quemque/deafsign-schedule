@@ -96,25 +96,29 @@ model Schedule {
 }
 
 model Lesson {
-  id          String     @id @default(cuid())
-  subject     String
-  teacherId   String?
-  room        String?
-  startsAt    DateTime
-  endsAt      DateTime
-  endDate     DateTime?  
-  isRecurring Boolean    @default(false)
-  dayOfWeek   DayOfWeek?
+  id                String     @id @default(cuid())
+  subject           String
+  teacherId         String?
+  customTeacherName String?
+  room              String?
+  color             String?
+  startsAt          DateTime
+  endsAt            DateTime
+  endDate           DateTime?
+  isRecurring       Boolean    @default(false)
+  totalLessons      Int?
+  dayOfWeek         DayOfWeek?
 
-  scheduleId  String?
-  schedule    Schedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  scheduleId String?
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  teacher       User?    @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacher       User? @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: SetNull)
   createdBy     String?
-  createdByUser User?    @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdByUser User? @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
 
   comments      Comment[]
-  cancellations LessonCancellation[] 
+  cancellations LessonCancellation[]
+  overrides     LessonOverride[]
   notes         TeacherNote[]
   enrollments   Enrollment[]
   attendance    Attendance[]
@@ -123,19 +127,34 @@ model Lesson {
   updatedAt DateTime @updatedAt
 
   @@index([startsAt])
-  @@index([endDate])
   @@index([teacherId])
-  @@index([scheduleId])
   @@map("lessons")
 }
 
-model LessonCancellation {
-  id       String   @id @default(cuid())
-  date     DateTime @db.Date
-  reason   String?
+model LessonOverride {
+  id                String   @id @default(cuid())
+  date              DateTime @db.Date
+  customTeacherName String?
 
   lessonId String
-  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lessonId, date])
+  @@index([lessonId])
+  @@index([date])
+  @@map("lesson_overrides")
+}
+
+model LessonCancellation {
+  id     String   @id @default(cuid())
+  date   DateTime @db.Date
+  reason String?
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -146,16 +165,16 @@ model LessonCancellation {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  text      String
-  date      DateTime @db.Date
-  isPublic  Boolean  @default(true)
+  id       String   @id @default(cuid())
+  text     String
+  date     DateTime @db.Date
+  isPublic Boolean  @default(true)
 
-  lessonId  String
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -244,7 +263,7 @@ model Notification {
 }
 
 model AuditLog {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   action    String
   entity    String
   entityId  String?

@@ -38,6 +38,53 @@ export function isLessonCancelledOnDate(
    })
 }
 
+export function isLessonActiveOnDate(
+   lesson: ApiLesson,
+   checkDate: Date,
+): boolean {
+   if (isLessonCancelledOnDate(lesson, checkDate)) return false
+
+   if (lesson.endDate) {
+      const checkMidnight = new Date(
+         checkDate.getFullYear(),
+         checkDate.getMonth(),
+         checkDate.getDate(),
+      ).getTime()
+      const cutoff = new Date(lesson.endDate).setHours(23, 59, 59, 999)
+      if (checkMidnight > cutoff) return false
+   }
+
+   const lessonStartDate = new Date(lesson.startsAt)
+   const startDayMidnight = new Date(
+      lessonStartDate.getUTCFullYear(),
+      lessonStartDate.getUTCMonth(),
+      lessonStartDate.getUTCDate(),
+   ).getTime()
+
+   const currentDayMidnight = new Date(
+      checkDate.getFullYear(),
+      checkDate.getMonth(),
+      checkDate.getDate(),
+   ).getTime()
+
+   if (currentDayMidnight < startDayMidnight) return false
+
+   if (!lesson.isRecurring || !lesson.totalLessons) return true
+
+   let count = 0
+   const cursor = new Date(startDayMidnight)
+
+   while (cursor.getTime() <= currentDayMidnight) {
+      const isCancelled = isLessonCancelledOnDate(lesson, cursor)
+      if (!isCancelled) {
+         count++
+      }
+      cursor.setDate(cursor.getDate() + 7)
+   }
+
+   return count <= lesson.totalLessons
+}
+
 export function filterLessonsForWeek(
    lessons: ApiLesson[],
    startDate: Date,
@@ -64,16 +111,17 @@ export function filterLessonsForWeek(
          if (startLocal > seriesEndDate) return false
       }
 
+      const lStart = new Date(l.startsAt)
+      const lStartDay = new Date(
+         lStart.getUTCFullYear(),
+         lStart.getUTCMonth(),
+         lStart.getUTCDate(),
+      )
+
+      if (lStartDay > endLocal) return false
+
       if (l.isRecurring) return true
 
-      const lDate = new Date(l.startsAt)
-      const utcDate = new Date(
-         lDate.getUTCFullYear(),
-         lDate.getUTCMonth(),
-         lDate.getUTCDate(),
-         lDate.getUTCHours(),
-         lDate.getUTCMinutes(),
-      )
-      return utcDate >= startLocal && utcDate <= endLocal
+      return lStartDay >= startLocal && lStartDay <= endLocal
    })
 }

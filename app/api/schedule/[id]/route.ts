@@ -27,12 +27,26 @@ export async function PATCH(
       where: { id },
       data: {
          subject: body.subject,
-         teacherId: body.teacherId || null,
          room: body.room ?? null,
+         teacherId: body.teacherId || null,
+         customTeacherName: body.customTeacherName
+            ? body.customTeacherName.trim()
+            : null,
+         color: body.color || undefined,
+         totalLessons:
+            body.totalLessons !== undefined
+               ? body.totalLessons
+                  ? Number(body.totalLessons)
+                  : null
+               : undefined,
          startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
          endsAt: body.endsAt ? new Date(body.endsAt) : undefined,
       },
-      include: { teacher: { select: { id: true, name: true } } },
+      include: {
+         teacher: { select: { id: true, name: true } },
+         comments: true,
+         cancellations: true,
+      },
    })
 
    return NextResponse.json({ lesson })

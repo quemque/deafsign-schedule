@@ -9,6 +9,57 @@ interface LessonCardProps {
    onClick: () => void
 }
 
+function renderTeacherName(fullName: string) {
+   const parts = fullName.trim().split(/\s+/)
+   if (!parts[0]) return null
+
+   const [lastName, ...rest] = parts
+
+   return (
+      <span className="truncate">
+         <span className="text-red-500 font-bold">{lastName}</span>
+         {rest.length > 0 ? ` ${rest.join(' ')}` : ''}
+      </span>
+   )
+}
+
+function getLessonIndex(lesson: ApiLesson, dayDate: Date): number | null {
+   if (!lesson.isRecurring || !lesson.totalLessons) return null
+
+   const startDate = new Date(lesson.startsAt)
+   const currentTarget = new Date(dayDate)
+   currentTarget.setHours(23, 59, 59, 999)
+
+   if (currentTarget < startDate) return null
+
+   let index = 0
+   const cursor = new Date(startDate)
+   cursor.setHours(0, 0, 0, 0)
+
+   while (cursor <= currentTarget) {
+      const yyyy = cursor.getFullYear()
+      const mm = String(cursor.getMonth() + 1).padStart(2, '0')
+      const dd = String(cursor.getDate()).padStart(2, '0')
+      const cursorKey = `${yyyy}-${mm}-${dd}`
+
+      const isCancelled = lesson.cancellations?.some((c) => {
+         const cDateStr =
+            typeof c.date === 'string'
+               ? c.date.split('T')[0]
+               : new Date(c.date).toISOString().split('T')[0]
+         return cDateStr === cursorKey
+      })
+
+      if (!isCancelled) {
+         index++
+      }
+
+      cursor.setDate(cursor.getDate() + 7)
+   }
+
+   return index <= lesson.totalLessons ? index : null
+}
+
 export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
    const startsAt = new Date(lesson.startsAt)
    const endsAt = new Date(lesson.endsAt)
@@ -29,13 +80,11 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
          minute: '2-digit',
       })
 
-   // Формируем YYYY-MM-DD для текущего дня карточки
    const yyyy = dayDate.getFullYear()
    const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
    const dd = String(dayDate.getDate()).padStart(2, '0')
    const dateKey = `${yyyy}-${mm}-${dd}`
 
-   // Ищем комментарий, привязанный к этой дате
    const currentComment =
       lesson.comments?.find((c) => {
          const commentDateStr =
@@ -43,15 +92,24 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
          return commentDateStr.startsWith(dateKey)
       })?.text || ''
 
+   const teacherName = lesson.customTeacherName || lesson.teacher?.name
+   const baseColor = lesson.color || '#8BA888'
+   const lessonIndex = getLessonIndex(lesson, dayDate)
+
    return (
       <div
          onClick={onClick}
-         style={{ top: `${topPx}px`, height: `${heightPx}px` }}
-         className="absolute left-1 right-1 rounded-xl p-2 sm:p-2.5 border transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex flex-col overflow-hidden group bg-[#E8F0E8] border-[#8BA888] text-[#3E3A35] z-10"
+         style={{
+            top: `${topPx}px`,
+            height: `${heightPx}px`,
+            backgroundColor: `${baseColor}18`,
+            borderColor: `${baseColor}80`,
+         }}
+         className="absolute left-1 right-1 rounded-xl p-2 sm:p-2.5 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] flex flex-col overflow-hidden group text-[#3E3A35] z-10"
       >
          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex items-start justify-between gap-1 mb-1">
-               <h3 className="text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 break-words flex-1">
+            <div className="flex items-start justify-between gap-1 mb-0.5">
+               <h3 className="text-[11px] sm:text-xs font-bold leading-tight line-clamp-1 break-words flex-1">
                   {lesson.subject}
                </h3>
                <span className="text-[9px] sm:text-[10px] font-medium opacity-80 flex items-center gap-0.5 shrink-0 whitespace-nowrap">
@@ -60,25 +118,34 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
                </span>
             </div>
 
-            <div className="mt-auto pt-1 flex flex-col gap-0.5 border-t border-[#8BA888]/30">
-               <div className="flex items-center justify-between text-[9px] sm:text-[10px] opacity-75">
-                  <span className="truncate font-medium">
-                     {[lesson.teacher?.name, lesson.room]
-                        .filter(Boolean)
-                        .join(' • ')}
-                  </span>
+            <div className="text-[9px] sm:text-[10px] truncate leading-tight mb-1">
+               {teacherName ? (
+                  renderTeacherName(teacherName)
+               ) : (
+                  <span className="opacity-50 italic">Без преподавателя</span>
+               )}
+            </div>
+
+            <div
+               style={{ borderColor: `${baseColor}40` }}
+               className="mt-auto pt-1 flex flex-col gap-0.5 border-t"
+            >
+               <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
                   {lesson.isRecurring && (
-                     <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm bg-white/50 ml-1">
-                        ЦИКЛ
+                     <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm bg-white/70 shadow-2xs text-[#3E3A35]">
+                        {lesson.totalLessons
+                           ? `${lessonIndex ?? '–'} / ${lesson.totalLessons}`
+                           : 'ЦИКЛ'}
                      </span>
                   )}
+
+                  {currentComment && (
+                     <div className="flex items-center gap-1 text-[9px] text-[#5A534A] opacity-70 italic ml-auto truncate max-w-[70%]">
+                        <MessageSquare className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">{currentComment}</span>
+                     </div>
+                  )}
                </div>
-               {currentComment && (
-                  <div className="flex items-center gap-1 text-[9px] text-[#5A534A] opacity-70 italic mt-0.5">
-                     <MessageSquare className="w-2.5 h-2.5 shrink-0" />
-                     <span className="truncate">{currentComment}</span>
-                  </div>
-               )}
             </div>
          </div>
       </div>

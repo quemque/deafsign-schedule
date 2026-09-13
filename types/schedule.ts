@@ -33,12 +33,30 @@ export interface ApiLesson {
    endsAt: string
    endDate?: string | null
    isRecurring: boolean
+   totalLessons?: number | null
+   color?: string | null
+   customTeacherName?: string | null
    dayOfWeek?: string | null
    room?: string | null
+   teacherId?: string | null
    teacher?: {
       id: string
       name: string
    } | null
    comments?: LessonComment[]
    cancellations?: LessonCancellation[]
+}
+
+export interface FormDataState {
+   subject: string
+   comment: string
+   date: string
+   dayOfWeek: string
+   startTime: string
+   endTime: string
+   room: string
+   teacherId: string
+   customTeacherName: string
+   color: string
+   totalLessons: string
 }

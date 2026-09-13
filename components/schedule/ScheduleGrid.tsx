@@ -4,7 +4,7 @@ import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { TIME_SLOTS } from '@/constants/schedule'
 import { LessonCard } from './LessonCard'
-import { isLessonCancelledOnDate } from '@/utils/date'
+import { isLessonActiveOnDate } from '@/utils/date'
 
 interface DayItem {
    key: string
@@ -93,14 +93,19 @@ export function ScheduleGrid({
                      const isSelected =
                         day.dateObj.toDateString() ===
                         currentDate.toDateString()
-                     const dayLessons = visibleLessons.filter((l) =>
-                        l.isRecurring
+
+                     const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
+
+                     const dayLessons = visibleLessons.filter((l) => {
+                        const matchesDay = l.isRecurring
                            ? l.dayOfWeek === day.key
                            : new Date(l.startsAt)
                                 .toISOString()
-                                .split('T')[0] ===
-                             day.dateObj.toISOString().split('T')[0],
-                     )
+                                .split('T')[0] === dayKeyDate
+
+                        if (!matchesDay) return false
+                        return isLessonActiveOnDate(l, day.dateObj)
+                     })
 
                      return (
                         <div
@@ -128,33 +133,16 @@ export function ScheduleGrid({
                               </div>
                            )}
 
-                           {dayLessons
-                              .filter((lesson) => {
-                                 if (
-                                    isLessonCancelledOnDate(lesson, day.dateObj)
-                                 )
-                                    return false
-
-                                 if (lesson.endDate) {
-                                    const dayStart = new Date(day.dateObj)
-                                    dayStart.setHours(0, 0, 0, 0)
-                                    const cutoff = new Date(lesson.endDate)
-                                    cutoff.setHours(23, 59, 59, 999)
-                                    if (dayStart > cutoff) return false
+                           {dayLessons.map((lesson) => (
+                              <LessonCard
+                                 key={lesson.id}
+                                 lesson={lesson}
+                                 dayDate={day.dateObj}
+                                 onClick={() =>
+                                    onSelectLesson(lesson, day.dateObj)
                                  }
-
-                                 return true
-                              })
-                              .map((lesson) => (
-                                 <LessonCard
-                                    key={lesson.id}
-                                    lesson={lesson}
-                                    dayDate={day.dateObj}
-                                    onClick={() =>
-                                       onSelectLesson(lesson, day.dateObj)
-                                    }
-                                 />
-                              ))}
+                              />
+                           ))}
                         </div>
                      )
                   })}
