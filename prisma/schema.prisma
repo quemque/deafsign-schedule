@@ -96,18 +96,21 @@ model Schedule {
 }
 
 model Lesson {
-  id                String     @id @default(cuid())
+  id                String      @id @default(cuid())
   subject           String
   teacherId         String?
   customTeacherName String?
+  teacherByDay      Json?
+  timeByDay         Json?
   room              String?
   color             String?
   startsAt          DateTime
   endsAt            DateTime
   endDate           DateTime?
-  isRecurring       Boolean    @default(false)
+  isRecurring       Boolean     @default(false)
   totalLessons      Int?
   dayOfWeek         DayOfWeek?
+  daysOfWeek        DayOfWeek[]
 
   scheduleId String?
   schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
@@ -119,6 +122,7 @@ model Lesson {
   comments      Comment[]
   cancellations LessonCancellation[]
   overrides     LessonOverride[]
+  reschedules   LessonReschedule[]
   notes         TeacherNote[]
   enrollments   Enrollment[]
   attendance    Attendance[]
@@ -146,6 +150,24 @@ model LessonOverride {
   @@index([lessonId])
   @@index([date])
   @@map("lesson_overrides")
+}
+
+model LessonReschedule {
+  id           String   @id @default(cuid())
+  originalDate DateTime @db.Date
+  newStartsAt  DateTime
+  newEndsAt    DateTime
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lessonId, originalDate])
+  @@index([lessonId])
+  @@index([originalDate])
+  @@map("lesson_reschedules")
 }
 
 model LessonCancellation {

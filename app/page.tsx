@@ -86,6 +86,7 @@ export default function SchedulePage() {
                   lessonForm.openEdit(lesson, activeDate)
                }}
                onDelete={() => setIsDeleteConfirmOpen(true)}
+               onUpdate={refreshSchedule}
             />
          )}
 

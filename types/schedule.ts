@@ -25,12 +25,25 @@ export interface LessonOverride {
    lessonId: string
 }
 
+export interface LessonReschedule {
+   id: string
+   originalDate: string | Date
+   newStartsAt: string | Date
+   newEndsAt: string | Date
+   lessonId: string
+}
+
 export type DeleteLessonMode = 'this' | 'future' | 'all'
 
 export interface CurrentUser {
    id: string
    name: string
    role: 'ADMIN' | 'TEACHER' | 'USER'
+}
+
+export interface DayTimeSlot {
+   startTime: string
+   endTime: string
 }
 
 export interface ApiLesson {
@@ -43,7 +56,10 @@ export interface ApiLesson {
    totalLessons?: number | null
    color?: string | null
    customTeacherName?: string | null
+   teacherByDay?: Record<string, string> | null
+   timeByDay?: Record<string, DayTimeSlot> | null
    dayOfWeek?: string | null
+   daysOfWeek?: string[]
    room?: string | null
    teacherId?: string | null
    teacher?: {
@@ -53,6 +69,7 @@ export interface ApiLesson {
    comments?: LessonComment[]
    cancellations?: LessonCancellation[]
    overrides?: LessonOverride[]
+   reschedules?: LessonReschedule[]
 }
 
 export interface FormDataState {
@@ -60,11 +77,14 @@ export interface FormDataState {
    comment: string
    date: string
    dayOfWeek: string
+   daysOfWeek: string[]
    startTime: string
    endTime: string
    room: string
    teacherId: string
    customTeacherName: string
+   teacherByDay: Record<string, string>
+   timeByDay: Record<string, DayTimeSlot>
    color: string
    totalLessons: string
 }

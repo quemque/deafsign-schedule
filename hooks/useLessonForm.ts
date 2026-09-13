@@ -36,6 +36,9 @@ export function useLessonForm(onSuccess?: () => void) {
          ...INITIAL_FORM,
          date: `${yyyy}-${mm}-${dd}`,
          dayOfWeek: currentDayKey,
+         daysOfWeek: [currentDayKey],
+         teacherByDay: {},
+         timeByDay: {},
       })
       setError('')
       setIsOpen(true)
@@ -51,36 +54,62 @@ export function useLessonForm(onSuccess?: () => void) {
       const dd = String(targetDate.getDate()).padStart(2, '0')
       const dateKey = `${yyyy}-${mm}-${dd}`
 
+      const dayKeys = [
+         'SUNDAY',
+         'MONDAY',
+         'TUESDAY',
+         'WEDNESDAY',
+         'THURSDAY',
+         'FRIDAY',
+         'SATURDAY',
+      ]
+      const dayKey = dayKeys[targetDate.getDay()]
+
       const dateOverride = lesson.overrides?.find((o) => {
          const oDateStr =
             typeof o.date === 'string' ? o.date : new Date(o.date).toISOString()
          return oDateStr.startsWith(dateKey)
       })
 
+      const daySpecificTeacher = lesson.teacherByDay?.[dayKey]
+
       const currentTeacher =
          dateOverride !== undefined
             ? dateOverride.customTeacherName || ''
-            : lesson.customTeacherName || lesson.teacher?.name || ''
+            : daySpecificTeacher ||
+              lesson.customTeacherName ||
+              lesson.teacher?.name ||
+              ''
 
       setInitialTeacherName(currentTeacher)
 
-      const formatTime = (iso: string) =>
+      const formatTime = (iso: string | Date) =>
          new Date(iso).toLocaleTimeString('ru-RU', {
             timeZone: 'UTC',
             hour: '2-digit',
             minute: '2-digit',
          })
 
+      const loadedDays =
+         lesson.daysOfWeek && lesson.daysOfWeek.length > 0
+            ? lesson.daysOfWeek
+            : lesson.dayOfWeek
+              ? [lesson.dayOfWeek]
+              : ['MONDAY']
+
       setForm({
          subject: lesson.subject,
          comment: '',
          date: dateKey,
-         dayOfWeek: lesson.dayOfWeek || 'MONDAY',
+         dayOfWeek: loadedDays[0] || 'MONDAY',
+         daysOfWeek: loadedDays,
          startTime: formatTime(lesson.startsAt),
          endTime: formatTime(lesson.endsAt),
          room: '',
          teacherId: lesson.teacher?.id || lesson.teacherId || '',
-         customTeacherName: currentTeacher,
+         customTeacherName: lesson.customTeacherName || '',
+         teacherByDay: lesson.teacherByDay || {},
+         timeByDay: lesson.timeByDay || {},
          color: lesson.color || '#8BA888',
          totalLessons: lesson.totalLessons ? String(lesson.totalLessons) : '',
       })
@@ -117,7 +146,10 @@ export function useLessonForm(onSuccess?: () => void) {
               subject: form.subject,
               teacherId: form.teacherId || null,
               customTeacherName: form.customTeacherName || null,
+              teacherByDay: form.teacherByDay,
+              timeByDay: form.timeByDay,
               color: form.color,
+              daysOfWeek: form.daysOfWeek,
               totalLessons: form.totalLessons
                  ? Number(form.totalLessons)
                  : null,

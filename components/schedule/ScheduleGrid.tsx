@@ -4,7 +4,7 @@ import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { TIME_SLOTS } from '@/constants/schedule'
 import { LessonCard } from './LessonCard'
-import { isLessonActiveOnDate } from '@/utils/date'
+import { isLessonActiveOnDate, getLessonRescheduleTarget } from '@/utils/date'
 
 interface DayItem {
    key: string
@@ -97,11 +97,19 @@ export function ScheduleGrid({
                      const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
 
                      const dayLessons = visibleLessons.filter((l) => {
+                        const isRescheduledToThisDay = Boolean(
+                           getLessonRescheduleTarget(l, day.dateObj),
+                        )
+
                         const matchesDay = l.isRecurring
-                           ? l.dayOfWeek === day.key
+                           ? (l.daysOfWeek && l.daysOfWeek.length > 0
+                                ? l.daysOfWeek.includes(day.key)
+                                : l.dayOfWeek === day.key) ||
+                             isRescheduledToThisDay
                            : new Date(l.startsAt)
                                 .toISOString()
-                                .split('T')[0] === dayKeyDate
+                                .split('T')[0] === dayKeyDate ||
+                             isRescheduledToThisDay
 
                         if (!matchesDay) return false
                         return isLessonActiveOnDate(l, day.dateObj)

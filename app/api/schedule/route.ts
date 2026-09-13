@@ -14,6 +14,7 @@ export async function GET() {
             comments: true,
             cancellations: true,
             overrides: true,
+            reschedules: true,
          },
       })
       return NextResponse.json({ lessons })
@@ -35,11 +36,14 @@ export async function POST(req: NextRequest) {
          subject,
          teacherId,
          customTeacherName,
+         teacherByDay,
+         timeByDay,
          color,
          totalLessons,
          isRecurring,
          date,
          dayOfWeek,
+         daysOfWeek,
          startTime,
          endTime,
          startsAt: rawStartsAt,
@@ -56,22 +60,50 @@ export async function POST(req: NextRequest) {
       let startsAt: Date
       let endsAt: Date
       let recurring = false
+      let resolvedDaysOfWeek: DayOfWeek[] = []
       let resolvedDayOfWeek: DayOfWeek | null = null
 
       if (isRecurring) {
-         if (!dayOfWeek || !startTime || !endTime || !date) {
+         const selectedDays =
+            Array.isArray(daysOfWeek) && daysOfWeek.length > 0
+               ? (daysOfWeek as DayOfWeek[])
+               : dayOfWeek
+                 ? [dayOfWeek as DayOfWeek]
+                 : []
+
+         if (selectedDays.length === 0 || !startTime || !endTime || !date) {
             return NextResponse.json(
-               { error: 'Укажите дату начала, день недели и время' },
+               { error: 'Укажите дату начала, дни недели и время' },
                { status: 400 },
             )
          }
 
          recurring = true
-         resolvedDayOfWeek = dayOfWeek as DayOfWeek
+         resolvedDaysOfWeek = selectedDays
+         resolvedDayOfWeek = selectedDays[0]
 
-         const [sh, sm] = startTime.split(':').map(Number)
-         const [eh, em] = endTime.split(':').map(Number)
          const [y, m, d] = date.split('-').map(Number)
+         const dayIndexMap = [
+            'SUNDAY',
+            'MONDAY',
+            'TUESDAY',
+            'WEDNESDAY',
+            'THURSDAY',
+            'FRIDAY',
+            'SATURDAY',
+         ]
+         const firstDayKey = dayIndexMap[new Date(y, m - 1, d).getDay()]
+         const customSlot = timeByDay?.[firstDayKey]
+
+         const activeStartTime = customSlot?.startTime?.trim()
+            ? customSlot.startTime
+            : startTime
+         const activeEndTime = customSlot?.endTime?.trim()
+            ? customSlot.endTime
+            : endTime
+
+         const [sh, sm] = activeStartTime.split(':').map(Number)
+         const [eh, em] = activeEndTime.split(':').map(Number)
 
          startsAt = new Date(Date.UTC(y, m - 1, d, sh, sm, 0, 0))
          endsAt = new Date(Date.UTC(y, m - 1, d, eh, em, 0, 0))
@@ -99,6 +131,8 @@ export async function POST(req: NextRequest) {
             customTeacherName: customTeacherName
                ? customTeacherName.trim()
                : null,
+            teacherByDay: teacherByDay || null,
+            timeByDay: timeByDay || null,
             room: null,
             color: color || '#8BA888',
             totalLessons:
@@ -107,6 +141,7 @@ export async function POST(req: NextRequest) {
             endsAt,
             isRecurring: recurring,
             dayOfWeek: resolvedDayOfWeek,
+            daysOfWeek: resolvedDaysOfWeek,
             createdBy: user.id,
          },
          include: {
@@ -114,6 +149,7 @@ export async function POST(req: NextRequest) {
             comments: true,
             cancellations: true,
             overrides: true,
+            reschedules: true,
          },
       })
 

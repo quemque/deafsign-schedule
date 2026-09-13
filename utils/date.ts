@@ -1,6 +1,16 @@
 import { monthNames } from '@/constants/schedule'
 import type { ApiLesson } from '@/types/schedule'
 
+const DAY_INDICES: Record<string, number> = {
+   SUNDAY: 0,
+   MONDAY: 1,
+   TUESDAY: 2,
+   WEDNESDAY: 3,
+   THURSDAY: 4,
+   FRIDAY: 5,
+   SATURDAY: 6,
+}
+
 export function getStartOfWeek(date: Date) {
    const d = new Date(date)
    const day = d.getDay()
@@ -38,11 +48,54 @@ export function isLessonCancelledOnDate(
    })
 }
 
+export function getLessonRescheduleTarget(lesson: ApiLesson, dayDate: Date) {
+   if (!lesson.reschedules || lesson.reschedules.length === 0) return null
+
+   const yyyy = dayDate.getFullYear()
+   const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
+   const dd = String(dayDate.getDate()).padStart(2, '0')
+   const dateKey = `${yyyy}-${mm}-${dd}`
+
+   return (
+      lesson.reschedules.find((r) => {
+         const rDateStr =
+            typeof r.newStartsAt === 'string'
+               ? r.newStartsAt.split('T')[0]
+               : new Date(r.newStartsAt).toISOString().split('T')[0]
+         return rDateStr === dateKey
+      }) || null
+   )
+}
+
+export function isLessonRescheduledAway(
+   lesson: ApiLesson,
+   dayDate: Date,
+): boolean {
+   if (!lesson.reschedules || lesson.reschedules.length === 0) return false
+
+   const yyyy = dayDate.getFullYear()
+   const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
+   const dd = String(dayDate.getDate()).padStart(2, '0')
+   const dateKey = `${yyyy}-${mm}-${dd}`
+
+   return lesson.reschedules.some((r) => {
+      const rDateStr =
+         typeof r.originalDate === 'string'
+            ? r.originalDate.split('T')[0]
+            : new Date(r.originalDate).toISOString().split('T')[0]
+      return rDateStr === dateKey
+   })
+}
+
 export function isLessonActiveOnDate(
    lesson: ApiLesson,
    checkDate: Date,
 ): boolean {
    if (isLessonCancelledOnDate(lesson, checkDate)) return false
+   if (isLessonRescheduledAway(lesson, checkDate)) return false
+
+   const rescheduledSlot = getLessonRescheduleTarget(lesson, checkDate)
+   if (rescheduledSlot) return true
 
    if (lesson.endDate) {
       const checkMidnight = new Date(
@@ -71,15 +124,25 @@ export function isLessonActiveOnDate(
 
    if (!lesson.isRecurring || !lesson.totalLessons) return true
 
+   const targetDays =
+      lesson.daysOfWeek && lesson.daysOfWeek.length > 0
+         ? lesson.daysOfWeek.map((d) => DAY_INDICES[d])
+         : lesson.dayOfWeek
+           ? [DAY_INDICES[lesson.dayOfWeek]]
+           : [lessonStartDate.getUTCDay()]
+
    let count = 0
    const cursor = new Date(startDayMidnight)
 
    while (cursor.getTime() <= currentDayMidnight) {
-      const isCancelled = isLessonCancelledOnDate(lesson, cursor)
-      if (!isCancelled) {
-         count++
+      const dayOfWeekIndex = cursor.getDay()
+      if (targetDays.includes(dayOfWeekIndex)) {
+         const isCancelled = isLessonCancelledOnDate(lesson, cursor)
+         if (!isCancelled) {
+            count++
+         }
       }
-      cursor.setDate(cursor.getDate() + 7)
+      cursor.setDate(cursor.getDate() + 1)
    }
 
    return count <= lesson.totalLessons
@@ -105,6 +168,14 @@ export function filterLessonsForWeek(
    )
 
    return lessons.filter((l) => {
+      if (l.reschedules && l.reschedules.length > 0) {
+         const hasRescheduleInWeek = l.reschedules.some((r) => {
+            const rStart = new Date(r.newStartsAt)
+            return rStart >= startLocal && rStart <= endLocal
+         })
+         if (hasRescheduleInWeek) return true
+      }
+
       if (l.endDate) {
          const seriesEndDate = new Date(l.endDate)
          seriesEndDate.setUTCHours(23, 59, 59, 999)

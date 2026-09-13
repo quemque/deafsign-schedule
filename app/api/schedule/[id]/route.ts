@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { DayOfWeek } from '@prisma/client'
 
 export async function PATCH(
    req: NextRequest,
@@ -21,8 +22,61 @@ export async function PATCH(
          include: {
             teacher: { select: { id: true, name: true } },
             overrides: true,
+            reschedules: true,
          },
       })
+      return NextResponse.json({ lesson })
+   }
+
+   if (body.action === 'reschedule') {
+      const { originalDate, newDate, newStartTime, newEndTime } = body
+      if (!originalDate || !newDate || !newStartTime || !newEndTime) {
+         return NextResponse.json(
+            { error: 'Заполните все параметры переноса' },
+            { status: 400 },
+         )
+      }
+
+      const [oy, om, od] = originalDate.split('-').map(Number)
+      const origDateObj = new Date(Date.UTC(oy, om - 1, od))
+
+      const [ny, nm, nd] = newDate.split('-').map(Number)
+      const [sh, sm] = newStartTime.split(':').map(Number)
+      const [eh, em] = newEndTime.split(':').map(Number)
+
+      const newStartsAt = new Date(Date.UTC(ny, nm - 1, nd, sh, sm, 0, 0))
+      const newEndsAt = new Date(Date.UTC(ny, nm - 1, nd, eh, em, 0, 0))
+
+      await prisma.lessonReschedule.upsert({
+         where: {
+            lessonId_originalDate: {
+               lessonId: id,
+               originalDate: origDateObj,
+            },
+         },
+         create: {
+            lessonId: id,
+            originalDate: origDateObj,
+            newStartsAt,
+            newEndsAt,
+         },
+         update: {
+            newStartsAt,
+            newEndsAt,
+         },
+      })
+
+      const lesson = await prisma.lesson.findUnique({
+         where: { id },
+         include: {
+            teacher: { select: { id: true, name: true } },
+            comments: true,
+            cancellations: true,
+            overrides: true,
+            reschedules: true,
+         },
+      })
+
       return NextResponse.json({ lesson })
    }
 
@@ -58,6 +112,18 @@ export async function PATCH(
          data: {
             subject: data.subject,
             color: data.color || undefined,
+            teacherByDay:
+               data.teacherByDay !== undefined ? data.teacherByDay : undefined,
+            timeByDay:
+               data.timeByDay !== undefined ? data.timeByDay : undefined,
+            daysOfWeek:
+               data.daysOfWeek && data.daysOfWeek.length > 0
+                  ? (data.daysOfWeek as DayOfWeek[])
+                  : undefined,
+            dayOfWeek:
+               data.daysOfWeek && data.daysOfWeek.length > 0
+                  ? (data.daysOfWeek[0] as DayOfWeek)
+                  : undefined,
             totalLessons:
                data.totalLessons !== undefined
                   ? data.totalLessons
@@ -70,6 +136,7 @@ export async function PATCH(
             comments: true,
             cancellations: true,
             overrides: true,
+            reschedules: true,
          },
       })
 
@@ -84,7 +151,18 @@ export async function PATCH(
          customTeacherName: data.customTeacherName
             ? data.customTeacherName.trim()
             : null,
+         teacherByDay:
+            data.teacherByDay !== undefined ? data.teacherByDay : undefined,
+         timeByDay: data.timeByDay !== undefined ? data.timeByDay : undefined,
          color: data.color || undefined,
+         daysOfWeek:
+            data.daysOfWeek && data.daysOfWeek.length > 0
+               ? (data.daysOfWeek as DayOfWeek[])
+               : undefined,
+         dayOfWeek:
+            data.daysOfWeek && data.daysOfWeek.length > 0
+               ? (data.daysOfWeek[0] as DayOfWeek)
+               : undefined,
          totalLessons:
             data.totalLessons !== undefined
                ? data.totalLessons
@@ -99,6 +177,7 @@ export async function PATCH(
          comments: true,
          cancellations: true,
          overrides: true,
+         reschedules: true,
       },
    })
 
