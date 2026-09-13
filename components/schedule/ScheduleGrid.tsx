@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { LessonCard } from './LessonCard'
@@ -88,11 +88,29 @@ export function ScheduleGrid({
    onSelectDate,
    onSelectLesson,
 }: ScheduleGridProps) {
+   const [isMobile, setIsMobile] = useState(false)
+
+   useEffect(() => {
+      const checkMobile = () => {
+         setIsMobile(window.innerWidth < 640)
+      }
+      checkMobile()
+      window.addEventListener('resize', checkMobile)
+      return () => window.removeEventListener('resize', checkMobile)
+   }, [])
+
    const { startHour, endHour, timeSlots } = useMemo(() => {
       let minMinutes = Infinity
       let maxMinutes = -Infinity
 
-      weekDates.forEach((day) => {
+      const targetDays = isMobile
+         ? weekDates.filter(
+              (day) =>
+                 day.dateObj.toDateString() === currentDate.toDateString(),
+           )
+         : weekDates
+
+      targetDays.forEach((day) => {
          const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
 
          visibleLessons.forEach((lesson) => {
@@ -137,7 +155,7 @@ export function ScheduleGrid({
          endHour: eHour,
          timeSlots: slots,
       }
-   }, [weekDates, visibleLessons])
+   }, [weekDates, visibleLessons, isMobile, currentDate])
 
    const totalHours = Math.max(1, endHour - startHour)
    const totalHeightPx = totalHours * 96
@@ -154,9 +172,9 @@ export function ScheduleGrid({
       <div className="flex-1 bg-white rounded-2xl border border-[#E5E0D8] shadow-sm flex flex-col overflow-hidden">
          <div className="flex-1 overflow-auto w-full relative custom-scrollbar bg-white">
             <div className="min-w-full relative">
-               <div className="grid grid-cols-[50px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] sticky top-0 z-40 bg-[#FDFCFB]/95 backdrop-blur-md shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                  <div className="border-b border-r border-[#E5E0D8] sticky left-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md flex flex-col items-center justify-center py-2 sm:py-3 text-[10px] sm:text-[11px] font-semibold text-[#B0A89E] uppercase tracking-wider">
-                     <Clock className="w-3.5 h-3.5 mb-0.5 opacity-60" />
+               <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] sticky top-0 z-40 bg-[#FDFCFB]/95 backdrop-blur-md shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="border-b border-r border-[#E5E0D8] sticky left-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md flex flex-col items-center justify-center py-2 text-[9px] sm:text-[11px] font-semibold text-[#B0A89E] uppercase tracking-wider">
+                     <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 mb-0.5 opacity-60" />
                      Время
                   </div>
                   {weekDates.map((day) => {
@@ -189,14 +207,14 @@ export function ScheduleGrid({
                </div>
 
                <div
-                  className="grid grid-cols-[50px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] relative"
+                  className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_repeat(7,1fr)] relative"
                   style={{ minHeight: `${totalHeightPx}px` }}
                >
                   <div className="bg-[#FDFCFB] flex flex-col text-right select-none sticky left-0 z-30 border-r border-[#E5E0D8]">
                      {timeSlots.map((time) => (
                         <div
                            key={time}
-                           className="h-24 border-b border-[#F0EDE8] text-[10px] sm:text-[11px] text-[#B0A89E] font-medium pt-1 sm:pt-2 pr-1 sm:pr-2 bg-[#FDFCFB]"
+                           className="h-24 border-b border-[#F0EDE8] text-[9px] sm:text-[11px] text-[#B0A89E] font-medium pt-1 sm:pt-2 pr-1 sm:pr-2 bg-[#FDFCFB]"
                         >
                            {time}
                         </div>

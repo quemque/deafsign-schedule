@@ -148,7 +148,7 @@ export function LessonCard({
    if (startMinutesFromBase < 0) return null
 
    const topPx = (startMinutesFromBase / 60) * 96
-   const heightPx = Math.max((durationMinutes / 60) * 96, 56)
+   const heightPx = Math.max((durationMinutes / 60) * 96, 52)
 
    const formatTime = (d: Date) =>
       d.toLocaleTimeString('ru-RU', {
