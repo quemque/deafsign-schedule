@@ -19,7 +19,7 @@ interface LessonDetailsModalProps {
    onCommentTextChange: (val: string) => void
    onSaveComment: () => void
    onClose: () => void
-   onEdit: (lesson: ApiLesson) => void
+   onEdit: (lesson: ApiLesson, activeDate?: Date) => void
    onDelete: (id: string) => void
 }
 
@@ -57,7 +57,23 @@ export function LessonDetailsModal({
       })
 
    const displayDate = date || new Date(lesson.startsAt)
-   const teacherDisplayName = lesson.customTeacherName || lesson.teacher?.name
+
+   const yyyy = displayDate.getFullYear()
+   const mm = String(displayDate.getMonth() + 1).padStart(2, '0')
+   const dd = String(displayDate.getDate()).padStart(2, '0')
+   const dateKey = `${yyyy}-${mm}-${dd}`
+
+   const dateOverride = lesson.overrides?.find((o) => {
+      const oDateStr =
+         typeof o.date === 'string' ? o.date : new Date(o.date).toISOString()
+      return oDateStr.startsWith(dateKey)
+   })
+
+   const teacherDisplayName =
+      dateOverride !== undefined
+         ? dateOverride.customTeacherName
+         : lesson.customTeacherName || lesson.teacher?.name
+
    const baseColor = lesson.color || '#8BA888'
 
    return (
@@ -183,20 +199,19 @@ export function LessonDetailsModal({
                   )}
                </div>
             </div>
+
             <div className="p-4 sm:p-6 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex flex-wrap-reverse items-center justify-between gap-3">
                {isAdmin ? (
                   <div className="flex gap-2 w-full sm:w-auto">
                      <button
                         onClick={() => onDelete(lesson.id)}
                         className="flex-1 sm:flex-none flex justify-center p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
-                        title="Удалить занятие"
                      >
                         <Trash2 className="w-4 h-4" />
                      </button>
                      <button
-                        onClick={() => onEdit(lesson)}
+                        onClick={() => onEdit(lesson, displayDate)}
                         className="flex-1 sm:flex-none flex justify-center p-2 rounded-lg bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#8B857D] transition-colors"
-                        title="Редактировать занятие"
                      >
                         <Edit className="w-4 h-4" />
                      </button>

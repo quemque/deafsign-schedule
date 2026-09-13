@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { DAYS_OF_WEEK } from '@/constants/schedule'
 import type { FormDataState } from '@/types/schedule'
@@ -38,10 +39,11 @@ interface LessonFormModalProps {
    mode: 'once' | 'weekly'
    form: FormDataState
    error: string
+   initialTeacherName?: string
    onModeChange: (mode: 'once' | 'weekly') => void
    onFormChange: (form: FormDataState) => void
    onClose: () => void
-   onSubmit: (e: React.FormEvent) => void
+   onSubmit: (e: React.FormEvent, teacherScope?: 'this' | 'all') => void
 }
 
 export function LessonFormModal({
@@ -49,11 +51,14 @@ export function LessonFormModal({
    mode,
    form,
    error,
+   initialTeacherName = '',
    onModeChange,
    onFormChange,
    onClose,
    onSubmit,
 }: LessonFormModalProps) {
+   const [showTeacherScopeModal, setShowTeacherScopeModal] = useState(false)
+
    const handleDateChange = (newDateStr: string) => {
       if (!newDateStr) {
          onFormChange({ ...form, date: newDateStr })
@@ -93,238 +98,296 @@ export function LessonFormModal({
       })
    }
 
+   const handleFormSubmit = (e: React.FormEvent) => {
+      e.preventDefault()
+      if (
+         isEdit &&
+         mode === 'weekly' &&
+         form.customTeacherName.trim() !== initialTeacherName.trim()
+      ) {
+         setShowTeacherScopeModal(true)
+         return
+      }
+      onSubmit(e, 'all')
+   }
+
    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2C2824]/40 backdrop-blur-xs">
-         <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-[#E5E0D8] flex items-center justify-between shrink-0">
-               <h3 className="text-lg font-bold text-[#3E3A35]">
-                  {isEdit ? 'Редактирование' : 'Новое занятие'}
-               </h3>
-               <button
-                  onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-[#F5F2ED] transition-colors text-[#8B857D]"
-               >
-                  <X className="w-4 h-4" />
-               </button>
-            </div>
+      <>
+         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2C2824]/40 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden">
+               <div className="p-4 sm:p-6 border-b border-[#E5E0D8] flex items-center justify-between shrink-0">
+                  <h3 className="text-lg font-bold text-[#3E3A35]">
+                     {isEdit ? 'Редактирование' : 'Новое занятие'}
+                  </h3>
+                  <button
+                     onClick={onClose}
+                     className="p-1.5 rounded-lg hover:bg-[#F5F2ED] transition-colors text-[#8B857D]"
+                  >
+                     <X className="w-4 h-4" />
+                  </button>
+               </div>
 
-            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
-               {!isEdit && (
-                  <div className="flex gap-2 mb-5">
-                     <button
-                        type="button"
-                        onClick={() => onModeChange('once')}
-                        className={`flex-1 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
-                           mode === 'once'
-                              ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
-                              : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
-                        }`}
-                     >
-                        Разовое
-                     </button>
-                     <button
-                        type="button"
-                        onClick={() => onModeChange('weekly')}
-                        className={`flex-1 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
-                           mode === 'weekly'
-                              ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
-                              : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
-                        }`}
-                     >
-                        Каждую неделю
-                     </button>
-                  </div>
-               )}
-
-               <form
-                  id="lesson-form"
-                  onSubmit={onSubmit}
-                  className="space-y-3 sm:space-y-4"
-               >
-                  <div>
-                     <label className="text-[10px] font-medium text-[#8B857D] mb-1.5 block pl-1">
-                        Цвет занятия
-                     </label>
-                     <div className="flex items-center gap-2.5">
-                        {PALETTE.map((c) => (
-                           <button
-                              key={c.value}
-                              type="button"
-                              onClick={() =>
-                                 onFormChange({ ...form, color: c.value })
-                              }
-                              style={{ backgroundColor: c.value }}
-                              className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                                 form.color === c.value
-                                    ? 'ring-2 ring-offset-2 ring-[#3E3A35] scale-110'
-                                    : 'hover:scale-105'
-                              }`}
-                           >
-                              {form.color === c.value && (
-                                 <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                              )}
-                           </button>
-                        ))}
+               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+                  {!isEdit && (
+                     <div className="flex gap-2 mb-5">
+                        <button
+                           type="button"
+                           onClick={() => onModeChange('once')}
+                           className={`flex-1 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
+                              mode === 'once'
+                                 ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
+                                 : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
+                           }`}
+                        >
+                           Разовое
+                        </button>
+                        <button
+                           type="button"
+                           onClick={() => onModeChange('weekly')}
+                           className={`flex-1 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
+                              mode === 'weekly'
+                                 ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
+                                 : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
+                           }`}
+                        >
+                           Каждую неделю
+                        </button>
                      </div>
-                  </div>
+                  )}
 
-                  <div>
-                     <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                        Предмет / Группа
-                     </label>
-                     <input
-                        type="text"
-                        placeholder="Например: Основы жестового языка"
-                        value={form.subject}
-                        onChange={(e) =>
-                           onFormChange({ ...form, subject: e.target.value })
-                        }
-                        required
-                        className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
-                     />
-                  </div>
+                  <form
+                     id="lesson-form"
+                     onSubmit={handleFormSubmit}
+                     className="space-y-3 sm:space-y-4"
+                  >
+                     <div>
+                        <label className="text-[10px] font-medium text-[#8B857D] mb-1.5 block pl-1">
+                           Цвет занятия
+                        </label>
+                        <div className="flex items-center gap-2.5">
+                           {PALETTE.map((c) => (
+                              <button
+                                 key={c.value}
+                                 type="button"
+                                 onClick={() =>
+                                    onFormChange({ ...form, color: c.value })
+                                 }
+                                 style={{ backgroundColor: c.value }}
+                                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                                    form.color === c.value
+                                       ? 'ring-2 ring-offset-2 ring-[#3E3A35] scale-110'
+                                       : 'hover:scale-105'
+                                 }`}
+                              >
+                                 {form.color === c.value && (
+                                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                                 )}
+                              </button>
+                           ))}
+                        </div>
+                     </div>
 
-                  <div>
-                     <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                        Преподаватель
-                     </label>
-                     <input
-                        type="text"
-                        placeholder="ФИО преподавателя"
-                        value={form.customTeacherName}
-                        onChange={(e) =>
-                           onFormChange({
-                              ...form,
-                              customTeacherName: e.target.value,
-                           })
-                        }
-                        className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
-                     />
-                  </div>
-
-                  {(mode === 'weekly' || isEdit) && (
                      <div>
                         <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                           Количество занятий в курсе (опционально)
+                           Предмет / Группа
                         </label>
                         <input
-                           type="number"
-                           min="1"
-                           placeholder="Например: 25 (пусто = бессрочно)"
-                           value={form.totalLessons}
+                           type="text"
+                           placeholder="Например: Основы жестового языка"
+                           value={form.subject}
+                           onChange={(e) =>
+                              onFormChange({ ...form, subject: e.target.value })
+                           }
+                           required
+                           className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
+                        />
+                     </div>
+
+                     <div>
+                        <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
+                           Преподаватель
+                        </label>
+                        <input
+                           type="text"
+                           placeholder="ФИО преподавателя"
+                           value={form.customTeacherName}
                            onChange={(e) =>
                               onFormChange({
                                  ...form,
-                                 totalLessons: e.target.value,
+                                 customTeacherName: e.target.value,
                               })
                            }
                            className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
                         />
                      </div>
-                  )}
 
-                  {!isEdit && (
-                     <div>
-                        <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                           {mode === 'weekly'
-                              ? 'Дата начала курса'
-                              : 'Дата занятия'}
-                        </label>
-                        <input
-                           type="date"
-                           value={form.date}
-                           onChange={(e) => handleDateChange(e.target.value)}
-                           required
-                           className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
-                        />
-                     </div>
-                  )}
-
-                  {!isEdit && mode === 'weekly' && (
-                     <div>
-                        <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                           День недели
-                        </label>
-                        <select
-                           value={form.dayOfWeek}
-                           onChange={(e) =>
-                              handleDayOfWeekChange(e.target.value)
-                           }
-                           className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm appearance-none"
-                        >
-                           {DAYS_OF_WEEK.map((d) => (
-                              <option key={d.key} value={d.key}>
-                                 {d.label}
-                              </option>
-                           ))}
-                        </select>
-                     </div>
-                  )}
-
-                  {!isEdit && (
-                     <div className="grid grid-cols-2 gap-3">
+                     {(mode === 'weekly' || isEdit) && (
                         <div>
                            <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                              Начало
+                              Количество занятий в курсе (опционально)
                            </label>
                            <input
-                              type="time"
-                              value={form.startTime}
+                              type="number"
+                              min="1"
+                              placeholder="Например: 25 (пусто = бессрочно)"
+                              value={form.totalLessons}
                               onChange={(e) =>
                                  onFormChange({
                                     ...form,
-                                    startTime: e.target.value,
+                                    totalLessons: e.target.value,
                                  })
                               }
-                              required
-                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-3 py-2 sm:py-2.5 text-[11px] sm:text-sm"
+                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
                            />
                         </div>
+                     )}
+
+                     {!isEdit && (
                         <div>
                            <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                              Конец
+                              {mode === 'weekly'
+                                 ? 'Дата начала курса'
+                                 : 'Дата занятия'}
                            </label>
                            <input
-                              type="time"
-                              value={form.endTime}
-                              onChange={(e) =>
-                                 onFormChange({
-                                    ...form,
-                                    endTime: e.target.value,
-                                 })
-                              }
+                              type="date"
+                              value={form.date}
+                              onChange={(e) => handleDateChange(e.target.value)}
                               required
-                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-3 py-2 sm:py-2.5 text-[11px] sm:text-sm"
+                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
                            />
                         </div>
-                     </div>
-                  )}
+                     )}
 
-                  {error && (
-                     <div className="p-3 rounded-xl bg-red-50 text-[11px] text-red-700 font-medium border border-red-100">
-                        {error}
-                     </div>
-                  )}
-               </form>
-            </div>
+                     {!isEdit && mode === 'weekly' && (
+                        <div>
+                           <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
+                              День недели
+                           </label>
+                           <select
+                              value={form.dayOfWeek}
+                              onChange={(e) =>
+                                 handleDayOfWeekChange(e.target.value)
+                              }
+                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm appearance-none"
+                           >
+                              {DAYS_OF_WEEK.map((d) => (
+                                 <option key={d.key} value={d.key}>
+                                    {d.label}
+                                 </option>
+                              ))}
+                           </select>
+                        </div>
+                     )}
 
-            <div className="p-4 sm:p-6 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex gap-3">
-               <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] transition-colors rounded-xl"
-               >
-                  Отмена
-               </button>
-               <button
-                  form="lesson-form"
-                  type="submit"
-                  className="flex-1 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold bg-[#8BA888] hover:bg-[#7A9A77] text-white shadow-sm shadow-[#8BA888]/20 transition-all rounded-xl"
-               >
-                  Сохранить
-               </button>
+                     {!isEdit && (
+                        <div className="grid grid-cols-2 gap-3">
+                           <div>
+                              <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
+                                 Начало
+                              </label>
+                              <input
+                                 type="time"
+                                 value={form.startTime}
+                                 onChange={(e) =>
+                                    onFormChange({
+                                       ...form,
+                                       startTime: e.target.value,
+                                    })
+                                 }
+                                 required
+                                 className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-3 py-2 sm:py-2.5 text-[11px] sm:text-sm"
+                              />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
+                                 Конец
+                              </label>
+                              <input
+                                 type="time"
+                                 value={form.endTime}
+                                 onChange={(e) =>
+                                    onFormChange({
+                                       ...form,
+                                       endTime: e.target.value,
+                                    })
+                                 }
+                                 required
+                                 className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-3 py-2 sm:py-2.5 text-[11px] sm:text-sm"
+                              />
+                           </div>
+                        </div>
+                     )}
+
+                     {error && (
+                        <div className="p-3 rounded-xl bg-red-50 text-[11px] text-red-700 font-medium border border-red-100">
+                           {error}
+                        </div>
+                     )}
+                  </form>
+               </div>
+
+               <div className="p-4 sm:p-6 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex gap-3">
+                  <button
+                     type="button"
+                     onClick={onClose}
+                     className="flex-1 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] transition-colors rounded-xl"
+                  >
+                     Отмена
+                  </button>
+                  <button
+                     form="lesson-form"
+                     type="submit"
+                     className="flex-1 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold bg-[#8BA888] hover:bg-[#7A9A77] text-white shadow-sm shadow-[#8BA888]/20 transition-all rounded-xl"
+                  >
+                     Сохранить
+                  </button>
+               </div>
             </div>
          </div>
-      </div>
+
+         {showTeacherScopeModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#2C2824]/50 backdrop-blur-xs animate-in fade-in">
+               <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-[#E5E0D8] shadow-2xl relative">
+                  <h3 className="font-bold text-base text-[#3E3A35] mb-2">
+                     Изменение преподавателя
+                  </h3>
+                  <p className="text-xs text-[#8B857D] mb-5 leading-relaxed">
+                     Применить нового преподавателя только для выбранного дня
+                     или для всех занятий курса?
+                  </p>
+                  <div className="flex flex-col gap-2">
+                     <button
+                        type="button"
+                        onClick={(e) => {
+                           setShowTeacherScopeModal(false)
+                           onSubmit(e, 'this')
+                        }}
+                        className="w-full py-2.5 px-4 text-xs font-semibold rounded-xl bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] transition-colors"
+                     >
+                        Только на это занятие
+                     </button>
+                     <button
+                        type="button"
+                        onClick={(e) => {
+                           setShowTeacherScopeModal(false)
+                           onSubmit(e, 'all')
+                        }}
+                        className="w-full py-2.5 px-4 text-xs font-semibold rounded-xl bg-[#8BA888] hover:bg-[#7A9A77] text-white shadow-sm shadow-[#8BA888]/20 transition-colors"
+                     >
+                        На все занятия курса
+                     </button>
+                     <button
+                        type="button"
+                        onClick={() => setShowTeacherScopeModal(false)}
+                        className="w-full py-2.5 px-4 text-xs font-semibold rounded-xl border border-[#E5E0D8] text-[#8B857D] hover:bg-gray-50 transition-colors"
+                     >
+                        Отмена
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
+      </>
    )
 }

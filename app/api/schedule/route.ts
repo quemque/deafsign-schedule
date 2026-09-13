@@ -13,6 +13,7 @@ export async function GET() {
             teacher: { select: { id: true, name: true } },
             comments: true,
             cancellations: true,
+            overrides: true,
          },
       })
       return NextResponse.json({ lessons })
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
             teacher: { select: { id: true, name: true } },
             comments: true,
             cancellations: true,
+            overrides: true,
          },
       })
 

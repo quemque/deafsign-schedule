@@ -6,12 +6,16 @@ import { scheduleApi } from '@/services/scheduleApi'
 export function useLessonForm(onSuccess?: () => void) {
    const [isOpen, setIsOpen] = useState(false)
    const [selectedLesson, setSelectedLesson] = useState<ApiLesson | null>(null)
+   const [editingDate, setEditingDate] = useState<Date | null>(null)
+   const [initialTeacherName, setInitialTeacherName] = useState('')
    const [mode, setMode] = useState<'once' | 'weekly'>('once')
    const [form, setForm] = useState<FormDataState>(INITIAL_FORM)
    const [error, setError] = useState('')
 
    const openCreate = (currentDate: Date) => {
       setSelectedLesson(null)
+      setEditingDate(null)
+      setInitialTeacherName('')
       setMode('once')
       const yyyy = currentDate.getFullYear()
       const mm = String(currentDate.getMonth() + 1).padStart(2, '0')
@@ -37,12 +41,28 @@ export function useLessonForm(onSuccess?: () => void) {
       setIsOpen(true)
    }
 
-   const openEdit = (lesson: ApiLesson) => {
+   const openEdit = (lesson: ApiLesson, activeDate?: Date) => {
       setSelectedLesson(lesson)
-      const d = new Date(lesson.startsAt)
-      const yyyy = d.getUTCFullYear()
-      const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-      const dd = String(d.getUTCDate()).padStart(2, '0')
+      const targetDate = activeDate || new Date(lesson.startsAt)
+      setEditingDate(targetDate)
+
+      const yyyy = targetDate.getFullYear()
+      const mm = String(targetDate.getMonth() + 1).padStart(2, '0')
+      const dd = String(targetDate.getDate()).padStart(2, '0')
+      const dateKey = `${yyyy}-${mm}-${dd}`
+
+      const dateOverride = lesson.overrides?.find((o) => {
+         const oDateStr =
+            typeof o.date === 'string' ? o.date : new Date(o.date).toISOString()
+         return oDateStr.startsWith(dateKey)
+      })
+
+      const currentTeacher =
+         dateOverride !== undefined
+            ? dateOverride.customTeacherName || ''
+            : lesson.customTeacherName || lesson.teacher?.name || ''
+
+      setInitialTeacherName(currentTeacher)
 
       const formatTime = (iso: string) =>
          new Date(iso).toLocaleTimeString('ru-RU', {
@@ -54,13 +74,13 @@ export function useLessonForm(onSuccess?: () => void) {
       setForm({
          subject: lesson.subject,
          comment: '',
-         date: `${yyyy}-${mm}-${dd}`,
+         date: dateKey,
          dayOfWeek: lesson.dayOfWeek || 'MONDAY',
          startTime: formatTime(lesson.startsAt),
          endTime: formatTime(lesson.endsAt),
          room: '',
          teacherId: lesson.teacher?.id || lesson.teacherId || '',
-         customTeacherName: lesson.customTeacherName || '',
+         customTeacherName: currentTeacher,
          color: lesson.color || '#8BA888',
          totalLessons: lesson.totalLessons ? String(lesson.totalLessons) : '',
       })
@@ -72,12 +92,25 @@ export function useLessonForm(onSuccess?: () => void) {
    const closeForm = () => {
       setIsOpen(false)
       setSelectedLesson(null)
+      setEditingDate(null)
+      setInitialTeacherName('')
       setError('')
    }
 
-   const submitForm = async (e: React.FormEvent) => {
+   const submitForm = async (
+      e: React.FormEvent,
+      teacherScope: 'this' | 'all' = 'all',
+   ) => {
       e.preventDefault()
       setError('')
+
+      let activeDateStr: string | undefined
+      if (editingDate) {
+         const y = editingDate.getFullYear()
+         const m = String(editingDate.getMonth() + 1).padStart(2, '0')
+         const d = String(editingDate.getDate()).padStart(2, '0')
+         activeDateStr = `${y}-${m}-${d}`
+      }
 
       const payload = selectedLesson
          ? {
@@ -88,6 +121,8 @@ export function useLessonForm(onSuccess?: () => void) {
               totalLessons: form.totalLessons
                  ? Number(form.totalLessons)
                  : null,
+              teacherScope,
+              activeDate: activeDateStr,
            }
          : {
               ...form,
@@ -115,6 +150,7 @@ export function useLessonForm(onSuccess?: () => void) {
    return {
       isOpen,
       selectedLesson,
+      initialTeacherName,
       mode,
       setMode,
       form,

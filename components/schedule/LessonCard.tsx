@@ -92,7 +92,17 @@ export function LessonCard({ lesson, dayDate, onClick }: LessonCardProps) {
          return commentDateStr.startsWith(dateKey)
       })?.text || ''
 
-   const teacherName = lesson.customTeacherName || lesson.teacher?.name
+   const dateOverride = lesson.overrides?.find((o) => {
+      const oDateStr =
+         typeof o.date === 'string' ? o.date : new Date(o.date).toISOString()
+      return oDateStr.startsWith(dateKey)
+   })
+
+   const teacherName =
+      dateOverride !== undefined
+         ? dateOverride.customTeacherName
+         : lesson.customTeacherName || lesson.teacher?.name
+
    const baseColor = lesson.color || '#8BA888'
    const lessonIndex = getLessonIndex(lesson, dayDate)
 

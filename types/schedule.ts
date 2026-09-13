@@ -18,6 +18,13 @@ export interface LessonCancellation {
    lessonId: string
 }
 
+export interface LessonOverride {
+   id: string
+   date: string | Date
+   customTeacherName?: string | null
+   lessonId: string
+}
+
 export type DeleteLessonMode = 'this' | 'future' | 'all'
 
 export interface CurrentUser {
@@ -45,6 +52,7 @@ export interface ApiLesson {
    } | null
    comments?: LessonComment[]
    cancellations?: LessonCancellation[]
+   overrides?: LessonOverride[]
 }
 
 export interface FormDataState {

@@ -18,34 +18,87 @@ export async function PATCH(
    if (user.role === 'TEACHER') {
       const lesson = await prisma.lesson.findUnique({
          where: { id },
-         include: { teacher: { select: { id: true, name: true } } },
+         include: {
+            teacher: { select: { id: true, name: true } },
+            overrides: true,
+         },
       })
+      return NextResponse.json({ lesson })
+   }
+
+   const { teacherScope, activeDate, ...data } = body
+
+   if (teacherScope === 'this' && activeDate) {
+      const [y, m, d] = activeDate.split('-').map(Number)
+      const targetDate = new Date(Date.UTC(y, m - 1, d))
+
+      await prisma.lessonOverride.upsert({
+         where: {
+            lessonId_date: {
+               lessonId: id,
+               date: targetDate,
+            },
+         },
+         create: {
+            lessonId: id,
+            date: targetDate,
+            customTeacherName: data.customTeacherName
+               ? data.customTeacherName.trim()
+               : null,
+         },
+         update: {
+            customTeacherName: data.customTeacherName
+               ? data.customTeacherName.trim()
+               : null,
+         },
+      })
+
+      const lesson = await prisma.lesson.update({
+         where: { id },
+         data: {
+            subject: data.subject,
+            color: data.color || undefined,
+            totalLessons:
+               data.totalLessons !== undefined
+                  ? data.totalLessons
+                     ? Number(data.totalLessons)
+                     : null
+                  : undefined,
+         },
+         include: {
+            teacher: { select: { id: true, name: true } },
+            comments: true,
+            cancellations: true,
+            overrides: true,
+         },
+      })
+
       return NextResponse.json({ lesson })
    }
 
    const lesson = await prisma.lesson.update({
       where: { id },
       data: {
-         subject: body.subject,
-         room: body.room ?? null,
-         teacherId: body.teacherId || null,
-         customTeacherName: body.customTeacherName
-            ? body.customTeacherName.trim()
+         subject: data.subject,
+         teacherId: data.teacherId || null,
+         customTeacherName: data.customTeacherName
+            ? data.customTeacherName.trim()
             : null,
-         color: body.color || undefined,
+         color: data.color || undefined,
          totalLessons:
-            body.totalLessons !== undefined
-               ? body.totalLessons
-                  ? Number(body.totalLessons)
+            data.totalLessons !== undefined
+               ? data.totalLessons
+                  ? Number(data.totalLessons)
                   : null
                : undefined,
-         startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
-         endsAt: body.endsAt ? new Date(body.endsAt) : undefined,
+         startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
+         endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
       },
       include: {
          teacher: { select: { id: true, name: true } },
          comments: true,
          cancellations: true,
+         overrides: true,
       },
    })
 

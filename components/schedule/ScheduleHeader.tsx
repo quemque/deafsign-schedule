@@ -15,9 +15,7 @@ export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
                </div>
                <div>
                   <h1 className="text-sm font-semibold">Расписание</h1>
-                  <p className="text-[11px] text-[#8B857D]">
-                     Все занятия курса
-                  </p>
+                  <p className="text-[11px] text-[#8B857D]">Все занятия</p>
                </div>
             </div>
             <div className="flex items-center gap-2">

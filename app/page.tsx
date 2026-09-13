@@ -81,9 +81,9 @@ export default function SchedulePage() {
                onCommentTextChange={lessonDetails.setCommentText}
                onSaveComment={lessonDetails.saveComment}
                onClose={lessonDetails.closeDetails}
-               onEdit={(lesson) => {
+               onEdit={(lesson, activeDate) => {
                   lessonDetails.closeDetails()
-                  lessonForm.openEdit(lesson)
+                  lessonForm.openEdit(lesson, activeDate)
                }}
                onDelete={() => setIsDeleteConfirmOpen(true)}
             />
@@ -108,6 +108,7 @@ export default function SchedulePage() {
                mode={lessonForm.mode}
                form={lessonForm.form}
                error={lessonForm.error}
+               initialTeacherName={lessonForm.initialTeacherName}
                onModeChange={lessonForm.setMode}
                onFormChange={lessonForm.setForm}
                onClose={lessonForm.closeForm}
