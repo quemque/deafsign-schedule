@@ -5,6 +5,7 @@ import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { LessonCard } from './LessonCard'
 import { isLessonActiveOnDate, getLessonRescheduleTarget } from '@/utils/date'
+import { computeDayLayout } from '@/utils/layout'
 
 const INDEX_TO_DAY = [
    'SUNDAY',
@@ -228,7 +229,7 @@ export function ScheduleGrid({
 
                      const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
 
-                     const dayLessons = visibleLessons.filter((l) => {
+                     const rawDayLessons = visibleLessons.filter((l) => {
                         const isRescheduledToThisDay = Boolean(
                            getLessonRescheduleTarget(l, day.dateObj),
                         )
@@ -246,6 +247,11 @@ export function ScheduleGrid({
                         if (!matchesDay) return false
                         return isLessonActiveOnDate(l, day.dateObj)
                      })
+
+                     const layoutLessons = computeDayLayout(
+                        rawDayLessons,
+                        day.dateObj,
+                     )
 
                      const nowPos = getCurrentTimePosition()
                      const isNowVisible = nowPos >= 0 && nowPos <= totalHeightPx
@@ -274,14 +280,18 @@ export function ScheduleGrid({
                               </div>
                            )}
 
-                           {dayLessons.map((lesson) => (
+                           {layoutLessons.map((item) => (
                               <LessonCard
-                                 key={lesson.id}
-                                 lesson={lesson}
+                                 key={item.lesson.id}
+                                 lesson={item.lesson}
                                  dayDate={day.dateObj}
                                  baseHour={startHour}
+                                 startsAtDate={item.startsAt}
+                                 endsAtDate={item.endsAt}
+                                 column={item.column}
+                                 totalColumns={item.totalColumns}
                                  onClick={() =>
-                                    onSelectLesson(lesson, day.dateObj)
+                                    onSelectLesson(item.lesson, day.dateObj)
                                  }
                               />
                            ))}
