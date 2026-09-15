@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
    Plus,
-   Trash2,
    Edit,
    X,
    Shield,
@@ -12,6 +11,7 @@ import {
    LogOut,
    Mail,
    UserCheck,
+   UserX,
 } from 'lucide-react'
 
 interface AdminUser {
@@ -38,6 +38,7 @@ export default function AdminPage() {
       password: '',
       name: '',
       role: 'TEACHER',
+      isActive: true,
    })
    const [error, setError] = useState('')
 
@@ -77,6 +78,7 @@ export default function AdminPage() {
               email: form.email,
               name: form.name,
               role: form.role,
+              isActive: form.isActive,
               ...(form.password ? { password: form.password } : {}),
            }
          : form
@@ -95,7 +97,14 @@ export default function AdminPage() {
 
       setShowModal(false)
       setEditingUser(null)
-      setForm({ email: '', login: '', password: '', name: '', role: 'TEACHER' })
+      setForm({
+         email: '',
+         login: '',
+         password: '',
+         name: '',
+         role: 'TEACHER',
+         isActive: true,
+      })
       fetchUsers()
    }
 
@@ -107,14 +116,31 @@ export default function AdminPage() {
          password: '',
          name: user.name,
          role: user.role,
+         isActive: user.isActive,
       })
       setShowModal(true)
    }
 
-   const handleDelete = async (id: string) => {
-      if (!confirm('Деактивировать пользователя?')) return
-      await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
-      fetchUsers()
+   const handleToggleActive = async (user: AdminUser) => {
+      const nextStatus = !user.isActive
+      const actionText = nextStatus ? 'активировать' : 'деактивировать'
+
+      if (
+         !confirm(
+            `Вы действительно хотите ${actionText} пользователя ${user.name}?`,
+         )
+      )
+         return
+
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+         method: 'PATCH',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ isActive: nextStatus }),
+      })
+
+      if (res.ok) {
+         fetchUsers()
+      }
    }
 
    const getRoleBadgeClass = (role: string) => {
@@ -190,6 +216,7 @@ export default function AdminPage() {
                         password: '',
                         name: '',
                         role: 'TEACHER',
+                        isActive: true,
                      })
                      setShowModal(true)
                   }}
@@ -236,7 +263,7 @@ export default function AdminPage() {
                                           : 'bg-red-100 text-red-700'
                                     }`}
                                  >
-                                    {user.isActive ? 'Активен' : 'Выкл'}
+                                    {user.isActive ? 'Активен' : 'Отключён'}
                                  </span>
                               </div>
                            </div>
@@ -248,18 +275,31 @@ export default function AdminPage() {
 
                            <div className="pt-2 border-t border-[#F0EDE8] flex items-center justify-end gap-2">
                               <button
+                                 onClick={() => handleToggleActive(user)}
+                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors ${
+                                    user.isActive
+                                       ? 'bg-amber-50 hover:bg-amber-100 text-amber-700'
+                                       : 'bg-green-50 hover:bg-green-100 text-green-700'
+                                 }`}
+                              >
+                                 {user.isActive ? (
+                                    <>
+                                       <UserX className="w-3.5 h-3.5" />
+                                       <span>Отключить</span>
+                                    </>
+                                 ) : (
+                                    <>
+                                       <UserCheck className="w-3.5 h-3.5" />
+                                       <span>Включить</span>
+                                    </>
+                                 )}
+                              </button>
+                              <button
                                  onClick={() => handleEdit(user)}
-                                 className="px-3 py-1.5 rounded-lg bg-[#F5F2ED] hover:bg-[#EDE8E0] text-xs font-semibold text-[#5A534A] flex items-center gap-1"
+                                 className="px-3 py-1.5 rounded-lg bg-[#F5F2ED] hover:bg-[#EDE8E0] text-xs font-semibold text-[#5A534A] flex items-center gap-1 transition-colors"
                               >
                                  <Edit className="w-3.5 h-3.5" />
                                  <span>Изменить</span>
-                              </button>
-                              <button
-                                 onClick={() => handleDelete(user.id)}
-                                 className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500"
-                                 title="Деактивировать"
-                              >
-                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                            </div>
                         </div>
@@ -326,18 +366,34 @@ export default function AdminPage() {
                                     </span>
                                  </td>
                                  <td className="px-4 py-3 text-right">
-                                    <div className="flex items-center justify-end gap-1">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                       <button
+                                          onClick={() =>
+                                             handleToggleActive(user)
+                                          }
+                                          className={`p-1.5 rounded-lg transition-colors ${
+                                             user.isActive
+                                                ? 'hover:bg-amber-50 text-amber-600'
+                                                : 'hover:bg-green-50 text-green-600'
+                                          }`}
+                                          title={
+                                             user.isActive
+                                                ? 'Деактивировать'
+                                                : 'Активировать'
+                                          }
+                                       >
+                                          {user.isActive ? (
+                                             <UserX className="w-4 h-4" />
+                                          ) : (
+                                             <UserCheck className="w-4 h-4" />
+                                          )}
+                                       </button>
                                        <button
                                           onClick={() => handleEdit(user)}
                                           className="p-1.5 rounded-lg hover:bg-[#F5F2ED] text-[#8B857D] transition-colors"
+                                          title="Редактировать"
                                        >
                                           <Edit className="w-4 h-4" />
-                                       </button>
-                                       <button
-                                          onClick={() => handleDelete(user.id)}
-                                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
-                                       >
-                                          <Trash2 className="w-4 h-4" />
                                        </button>
                                     </div>
                                  </td>
@@ -457,6 +513,29 @@ export default function AdminPage() {
                            <option value="ADMIN">Администратор</option>
                         </select>
                      </div>
+
+                     {editingUser && (
+                        <div className="flex items-center gap-2 pt-1 pl-1">
+                           <input
+                              type="checkbox"
+                              id="isActive"
+                              checked={form.isActive}
+                              onChange={(e) =>
+                                 setForm({
+                                    ...form,
+                                    isActive: e.target.checked,
+                                 })
+                              }
+                              className="w-4 h-4 rounded border-[#E5E0D8] text-[#8BA888] focus:ring-[#8BA888]"
+                           />
+                           <label
+                              htmlFor="isActive"
+                              className="text-xs font-semibold text-[#3E3A35] cursor-pointer"
+                           >
+                              Активный аккаунт
+                           </label>
+                        </div>
+                     )}
 
                      {error && (
                         <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
