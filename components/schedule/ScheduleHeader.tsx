@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, User as UserIcon } from 'lucide-react'
+import { Calendar, User as UserIcon, Shield } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
@@ -8,7 +8,7 @@ export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
 
    return (
       <header className="shrink-0 bg-[#FDFCFB]/90 backdrop-blur-md border-b border-[#E5E0D8] px-4 lg:px-8 py-3 z-40">
-         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
                <div className="w-9 h-9 rounded-xl bg-[#8BA888] flex items-center justify-center text-white shrink-0">
                   <Calendar className="w-4 h-4" />
@@ -22,9 +22,10 @@ export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
                {isAdmin && (
                   <button
                      onClick={() => router.push('/admin')}
-                     className="hidden sm:flex px-4 py-2 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-xl transition-colors items-center gap-2"
+                     className="p-2 sm:px-4 sm:py-2 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-xl transition-colors flex items-center gap-2"
                   >
-                     Админ панель
+                     <Shield className="w-4 h-4 text-[#8BA888]" />
+                     <span className="hidden sm:inline">Админ панель</span>
                   </button>
                )}
                <button
