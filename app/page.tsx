@@ -31,6 +31,7 @@ export default function SchedulePage() {
    const lessonForm = useLessonForm(refreshSchedule)
    const lessonDetails = useLessonDetails(refreshSchedule)
 
+   const [mobileViewMode, setMobileViewMode] = useState<'day' | 'week'>('day')
    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
    const isAdmin = user?.role === 'ADMIN'
@@ -45,6 +46,8 @@ export default function SchedulePage() {
             weekDates={weekDates}
             currentDate={currentDate}
             isAdmin={isAdmin}
+            mobileViewMode={mobileViewMode}
+            onMobileViewModeChange={setMobileViewMode}
             onPrevWeek={prevWeek}
             onNextWeek={nextWeek}
             onSetToday={setToday}
@@ -63,6 +66,7 @@ export default function SchedulePage() {
                   currentDate={currentDate}
                   currentTime={currentTime}
                   visibleLessons={visibleLessons}
+                  mobileViewMode={mobileViewMode}
                   onSelectDate={setCurrentDate}
                   onSelectLesson={(lesson, dayDate) =>
                      lessonDetails.openDetails(lesson, dayDate)
