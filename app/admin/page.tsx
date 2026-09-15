@@ -75,8 +75,9 @@ export default function AdminPage() {
 
       const body = editingUser
          ? {
-              email: form.email,
               name: form.name,
+              login: form.login,
+              email: form.email,
               role: form.role,
               isActive: form.isActive,
               ...(form.password ? { password: form.password } : {}),
@@ -441,23 +442,21 @@ export default function AdminPage() {
                         />
                      </div>
 
-                     {!editingUser && (
-                        <div>
-                           <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                              Логин
-                           </label>
-                           <input
-                              type="text"
-                              placeholder="login"
-                              value={form.login}
-                              onChange={(e) =>
-                                 setForm({ ...form, login: e.target.value })
-                              }
-                              required
-                              className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none rounded-xl px-3.5 py-2 text-xs sm:text-sm transition-colors"
-                           />
-                        </div>
-                     )}
+                     <div>
+                        <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
+                           Логин
+                        </label>
+                        <input
+                           type="text"
+                           placeholder="login"
+                           value={form.login}
+                           onChange={(e) =>
+                              setForm({ ...form, login: e.target.value })
+                           }
+                           required
+                           className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none rounded-xl px-3.5 py-2 text-xs sm:text-sm transition-colors"
+                        />
+                     </div>
 
                      <div>
                         <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
