@@ -30,12 +30,7 @@ export default function LoginPage() {
             setError(data.error || 'Ошибка входа')
             return
          }
-
-         if (data.user.role === 'ADMIN') {
-            router.push('/admin')
-         } else {
-            router.push('/')
-         }
+         router.push('/')
       } catch {
          setError('Ошибка соединения')
       } finally {
