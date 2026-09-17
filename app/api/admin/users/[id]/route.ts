@@ -22,7 +22,6 @@ export async function PATCH(
    try {
       const body = await request.json()
 
-      // Проверка на уникальность логина и email (исключая текущего пользователя)
       if (body.login || body.email) {
          const existing = await prisma.user.findFirst({
             where: {

@@ -55,7 +55,7 @@ export default function SchedulePage() {
             onOpenCreate={() => lessonForm.openCreate(currentDate)}
          />
 
-         <main className="flex-1 min-h-0 max-w-7xl w-full mx-auto p-2 sm:p-4 lg:p-6 flex flex-col">
+         <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto p-1.5 sm:p-2.5 flex flex-col">
             {loading ? (
                <div className="flex-1 flex items-center justify-center text-[#8B857D] text-sm">
                   Загрузка...
