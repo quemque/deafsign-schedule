@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { LessonCard } from './LessonCard'
@@ -34,6 +34,8 @@ interface ScheduleGridProps {
    mobileViewMode?: 'day' | 'week'
    onSelectDate: (date: Date) => void
    onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
+   onPrevDay?: () => void
+   onNextDay?: () => void
 }
 
 function getLessonTimes(lesson: ApiLesson, dayDate: Date) {
@@ -90,8 +92,14 @@ export function ScheduleGrid({
    mobileViewMode = 'day',
    onSelectDate,
    onSelectLesson,
+   onPrevDay,
+   onNextDay,
 }: ScheduleGridProps) {
    const [isMobile, setIsMobile] = useState(false)
+
+   const touchStartX = useRef<number | null>(null)
+   const touchStartY = useRef<number | null>(null)
+   const touchStartTime = useRef<number | null>(null)
 
    useEffect(() => {
       const checkMobile = () => {
@@ -101,6 +109,72 @@ export function ScheduleGrid({
       window.addEventListener('resize', checkMobile)
       return () => window.removeEventListener('resize', checkMobile)
    }, [])
+
+   const handleInternalPrevDay = () => {
+      if (onPrevDay) {
+         onPrevDay()
+         return
+      }
+      const prev = new Date(currentDate)
+      prev.setDate(prev.getDate() - 1)
+      onSelectDate(prev)
+   }
+
+   const handleInternalNextDay = () => {
+      if (onNextDay) {
+         onNextDay()
+         return
+      }
+      const next = new Date(currentDate)
+      next.setDate(next.getDate() + 1)
+      onSelectDate(next)
+   }
+
+   const handleTouchStart = (e: React.TouchEvent) => {
+      if (!isMobile || mobileViewMode !== 'day') return
+      touchStartX.current = e.touches[0].clientX
+      touchStartY.current = e.touches[0].clientY
+      touchStartTime.current = Date.now()
+   }
+
+   const handleTouchEnd = (e: React.TouchEvent) => {
+      if (!isMobile || mobileViewMode !== 'day') return
+      if (
+         touchStartX.current === null ||
+         touchStartY.current === null ||
+         touchStartTime.current === null
+      ) {
+         return
+      }
+
+      const touchEndX = e.changedTouches[0].clientX
+      const touchEndY = e.changedTouches[0].clientY
+      const diffX = touchEndX - touchStartX.current
+      const diffY = touchEndY - touchStartY.current
+      const duration = Date.now() - touchStartTime.current
+
+      touchStartX.current = null
+      touchStartY.current = null
+      touchStartTime.current = null
+
+      if (
+         duration < 550 &&
+         Math.abs(diffX) > 40 &&
+         Math.abs(diffX) > Math.abs(diffY) * 1.3
+      ) {
+         if (diffX < 0) {
+            handleInternalNextDay()
+         } else {
+            handleInternalPrevDay()
+         }
+      }
+   }
+
+   const handleTouchCancel = () => {
+      touchStartX.current = null
+      touchStartY.current = null
+      touchStartTime.current = null
+   }
 
    const hourHeight = isMobile ? 44 : 56
    const isSingleDayMobile = isMobile && mobileViewMode === 'day'
@@ -183,8 +257,17 @@ export function ScheduleGrid({
       mobileViewMode === 'week' ? 'min-w-[700px] sm:min-w-full' : 'min-w-full'
 
    return (
-      <div className="flex-1 bg-white rounded-xl border border-[#E5E0D8] shadow-2xs flex flex-col overflow-hidden">
-         <div className="flex-1 overflow-auto w-full relative custom-scrollbar bg-white">
+      <div
+         onTouchStart={handleTouchStart}
+         onTouchEnd={handleTouchEnd}
+         onTouchCancel={handleTouchCancel}
+         className="flex-1 bg-white rounded-xl border border-[#E5E0D8] shadow-2xs flex flex-col overflow-hidden select-none"
+      >
+         <div
+            className={`flex-1 overflow-auto w-full relative custom-scrollbar bg-white ${
+               mobileViewMode === 'day' ? 'touch-pan-y' : ''
+            }`}
+         >
             <div className={`${containerWidthClass} relative`}>
                <div
                   className={`grid ${gridColsClass} sticky top-0 z-40 bg-[#FDFCFB]/95 backdrop-blur-md border-b border-[#E5E0D8] shadow-[0_1px_2px_rgba(0,0,0,0.03)]`}

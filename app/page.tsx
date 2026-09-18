@@ -37,6 +37,18 @@ export default function SchedulePage() {
    const isAdmin = user?.role === 'ADMIN'
    const canEditComment = user?.role === 'ADMIN' || user?.role === 'TEACHER'
 
+   const handlePrevDay = () => {
+      const prev = new Date(currentDate)
+      prev.setDate(prev.getDate() - 1)
+      setCurrentDate(prev)
+   }
+
+   const handleNextDay = () => {
+      const next = new Date(currentDate)
+      next.setDate(next.getDate() + 1)
+      setCurrentDate(next)
+   }
+
    return (
       <div className="h-[100dvh] bg-[#FAF8F5] text-[#3E3A35] font-sans antialiased flex flex-col selection:bg-[#8BA888] selection:text-white overflow-hidden">
          <ScheduleHeader isAdmin={isAdmin} />
@@ -68,6 +80,8 @@ export default function SchedulePage() {
                   visibleLessons={visibleLessons}
                   mobileViewMode={mobileViewMode}
                   onSelectDate={setCurrentDate}
+                  onPrevDay={handlePrevDay}
+                  onNextDay={handleNextDay}
                   onSelectLesson={(lesson, dayDate) =>
                      lessonDetails.openDetails(lesson, dayDate)
                   }
