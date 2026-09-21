@@ -1,30 +1,18 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { LessonCard } from './LessonCard'
-import { isLessonActiveOnDate, getLessonRescheduleTarget } from '@/utils/date'
 import { computeDayLayout } from '@/utils/layout'
-
-const INDEX_TO_DAY = [
-   'SUNDAY',
-   'MONDAY',
-   'TUESDAY',
-   'WEDNESDAY',
-   'THURSDAY',
-   'FRIDAY',
-   'SATURDAY',
-]
-
-interface DayItem {
-   key: string
-   label: string
-   short: string
-   dateObj: Date
-   dateNumber: number
-   isToday: boolean
-}
+import { getLessonRescheduleTarget, isLessonActiveOnDate } from '@/utils/date'
+import { useIsMobile } from '@/hooks/useIsMobile'
+import { useDaySwipe } from '@/hooks/useDaySwipe'
+import {
+   DayItem,
+   calculateScheduleTimeBounds,
+   calculateCurrentTimePosition,
+} from '@/utils/scheduleTime'
 
 interface ScheduleGridProps {
    weekDates: DayItem[]
@@ -38,50 +26,122 @@ interface ScheduleGridProps {
    onNextDay?: () => void
 }
 
-function getLessonTimes(lesson: ApiLesson, dayDate: Date) {
-   const yyyy = dayDate.getFullYear()
-   const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
-   const dd = String(dayDate.getDate()).padStart(2, '0')
-   const dateKey = `${yyyy}-${mm}-${dd}`
-   const dayKey = INDEX_TO_DAY[dayDate.getDay()]
+interface CurrentTimeIndicatorProps {
+   position: number
+}
 
-   const rescheduleSlot = lesson.reschedules?.find((r) => {
-      const rDateStr =
-         typeof r.newStartsAt === 'string'
-            ? r.newStartsAt.split('T')[0]
-            : new Date(r.newStartsAt).toISOString().split('T')[0]
-      return rDateStr === dateKey
-   })
+interface TimeGutterProps {
+   timeSlots: string[]
+   hourHeight: number
+}
 
-   if (rescheduleSlot) {
-      return {
-         startsAt: new Date(rescheduleSlot.newStartsAt),
-         endsAt: new Date(rescheduleSlot.newEndsAt),
-      }
-   }
+interface DayColumnProps {
+   day: DayItem
+   isVisible: boolean
+   timeSlots: string[]
+   hourHeight: number
+   startHour: number
+   nowPosition: number
+   visibleLessons: ApiLesson[]
+   onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
+}
 
-   const customDayTime = lesson.timeByDay?.[dayKey]
-   if (
-      lesson.isRecurring &&
-      customDayTime?.startTime &&
-      customDayTime?.endTime
-   ) {
-      const [sh, sm] = customDayTime.startTime.split(':').map(Number)
-      const [eh, em] = customDayTime.endTime.split(':').map(Number)
-      return {
-         startsAt: new Date(
-            Date.UTC(yyyy, dayDate.getMonth(), dayDate.getDate(), sh, sm, 0),
-         ),
-         endsAt: new Date(
-            Date.UTC(yyyy, dayDate.getMonth(), dayDate.getDate(), eh, em, 0),
-         ),
-      }
-   }
+function CurrentTimeIndicator({ position }: CurrentTimeIndicatorProps) {
+   return (
+      <div
+         className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+         style={{ top: `${position}px` }}
+      >
+         <div className="w-1.5 h-1.5 rounded-full bg-[#8BA888] -ml-[3px] ring-2 ring-[#8BA888]/20" />
+         <div className="flex-1 h-[1.5px] bg-[#8BA888]/70" />
+      </div>
+   )
+}
 
-   return {
-      startsAt: new Date(lesson.startsAt),
-      endsAt: new Date(lesson.endsAt),
-   }
+function TimeGutter({ timeSlots, hourHeight }: TimeGutterProps) {
+   return (
+      <div className="bg-[#FDFCFB] flex flex-col text-right select-none sticky left-0 z-30 border-r border-[#E5E0D8]">
+         {timeSlots.map((time) => (
+            <div
+               key={time}
+               style={{ height: `${hourHeight}px` }}
+               className="border-b border-[#F0EDE8] text-[8px] sm:text-[10px] text-[#B0A89E] font-medium pt-0.5 pr-1 sm:pr-1.5 bg-[#FDFCFB]"
+            >
+               {time}
+            </div>
+         ))}
+      </div>
+   )
+}
+
+function DayColumn({
+   day,
+   isVisible,
+   timeSlots,
+   hourHeight,
+   startHour,
+   nowPosition,
+   visibleLessons,
+   onSelectLesson,
+}: DayColumnProps) {
+   const totalHeight = timeSlots.length * hourHeight
+   const isNowVisible = nowPosition >= 0 && nowPosition <= totalHeight
+
+   const layoutLessons = useMemo(() => {
+      const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
+
+      const rawDayLessons = visibleLessons.filter((lesson) => {
+         const isRescheduled = Boolean(
+            getLessonRescheduleTarget(lesson, day.dateObj),
+         )
+
+         const matchesDay = lesson.isRecurring
+            ? (lesson.daysOfWeek && lesson.daysOfWeek.length > 0
+                 ? lesson.daysOfWeek.includes(day.key)
+                 : lesson.dayOfWeek === day.key) || isRescheduled
+            : new Date(lesson.startsAt).toISOString().split('T')[0] ===
+                 dayKeyDate || isRescheduled
+
+         return matchesDay && isLessonActiveOnDate(lesson, day.dateObj)
+      })
+
+      return computeDayLayout(rawDayLessons, day.dateObj)
+   }, [day, visibleLessons])
+
+   return (
+      <div
+         className={`relative border-r border-[#F0EDE8] last:border-r-0 ${
+            isVisible ? 'block' : 'hidden sm:block'
+         } ${day.isToday ? 'bg-[#E8F0E8]/10' : 'bg-white'}`}
+      >
+         {timeSlots.map((time) => (
+            <div
+               key={time}
+               style={{ height: `${hourHeight}px` }}
+               className="border-b border-[#F0EDE8]/80 w-full"
+            />
+         ))}
+
+         {day.isToday && isNowVisible && (
+            <CurrentTimeIndicator position={nowPosition} />
+         )}
+
+         {layoutLessons.map((item) => (
+            <LessonCard
+               key={item.lesson.id}
+               lesson={item.lesson}
+               dayDate={day.dateObj}
+               baseHour={startHour}
+               hourHeight={hourHeight}
+               startsAtDate={item.startsAt}
+               endsAtDate={item.endsAt}
+               column={item.column}
+               totalColumns={item.totalColumns}
+               onClick={() => onSelectLesson(item.lesson, day.dateObj)}
+            />
+         ))}
+      </div>
+   )
 }
 
 export function ScheduleGrid({
@@ -95,158 +155,49 @@ export function ScheduleGrid({
    onPrevDay,
    onNextDay,
 }: ScheduleGridProps) {
-   const [isMobile, setIsMobile] = useState(false)
+   const isMobile = useIsMobile()
 
-   const touchStartX = useRef<number | null>(null)
-   const touchStartY = useRef<number | null>(null)
-   const touchStartTime = useRef<number | null>(null)
-
-   useEffect(() => {
-      const checkMobile = () => {
-         setIsMobile(window.innerWidth < 640)
-      }
-      checkMobile()
-      window.addEventListener('resize', checkMobile)
-      return () => window.removeEventListener('resize', checkMobile)
-   }, [])
-
-   const handleInternalPrevDay = () => {
-      if (onPrevDay) {
-         onPrevDay()
-         return
-      }
+   const handlePrev = () => {
+      if (onPrevDay) return onPrevDay()
       const prev = new Date(currentDate)
       prev.setDate(prev.getDate() - 1)
       onSelectDate(prev)
    }
 
-   const handleInternalNextDay = () => {
-      if (onNextDay) {
-         onNextDay()
-         return
-      }
+   const handleNext = () => {
+      if (onNextDay) return onNextDay()
       const next = new Date(currentDate)
       next.setDate(next.getDate() + 1)
       onSelectDate(next)
    }
 
-   const handleTouchStart = (e: React.TouchEvent) => {
-      if (!isMobile || mobileViewMode !== 'day') return
-      touchStartX.current = e.touches[0].clientX
-      touchStartY.current = e.touches[0].clientY
-      touchStartTime.current = Date.now()
-   }
-
-   const handleTouchEnd = (e: React.TouchEvent) => {
-      if (!isMobile || mobileViewMode !== 'day') return
-      if (
-         touchStartX.current === null ||
-         touchStartY.current === null ||
-         touchStartTime.current === null
-      ) {
-         return
-      }
-
-      const touchEndX = e.changedTouches[0].clientX
-      const touchEndY = e.changedTouches[0].clientY
-      const diffX = touchEndX - touchStartX.current
-      const diffY = touchEndY - touchStartY.current
-      const duration = Date.now() - touchStartTime.current
-
-      touchStartX.current = null
-      touchStartY.current = null
-      touchStartTime.current = null
-
-      if (
-         duration < 550 &&
-         Math.abs(diffX) > 40 &&
-         Math.abs(diffX) > Math.abs(diffY) * 1.3
-      ) {
-         if (diffX < 0) {
-            handleInternalNextDay()
-         } else {
-            handleInternalPrevDay()
-         }
-      }
-   }
-
-   const handleTouchCancel = () => {
-      touchStartX.current = null
-      touchStartY.current = null
-      touchStartTime.current = null
-   }
+   const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useDaySwipe({
+      enabled: isMobile && mobileViewMode === 'day',
+      onPrevDay: handlePrev,
+      onNextDay: handleNext,
+   })
 
    const hourHeight = isMobile ? 44 : 56
    const isSingleDayMobile = isMobile && mobileViewMode === 'day'
 
-   const { startHour, endHour, timeSlots } = useMemo(() => {
-      let minMinutes = Infinity
-      let maxMinutes = -Infinity
+   const targetDays = useMemo(() => {
+      if (!isSingleDayMobile) return weekDates
+      return weekDates.filter(
+         (d) => d.dateObj.toDateString() === currentDate.toDateString(),
+      )
+   }, [isSingleDayMobile, weekDates, currentDate])
 
-      const targetDays = isSingleDayMobile
-         ? weekDates.filter(
-              (day) =>
-                 day.dateObj.toDateString() === currentDate.toDateString(),
-           )
-         : weekDates
+   const { startHour, endHour, timeSlots } = useMemo(
+      () => calculateScheduleTimeBounds(targetDays, visibleLessons),
+      [targetDays, visibleLessons],
+   )
 
-      targetDays.forEach((day) => {
-         const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
-
-         visibleLessons.forEach((lesson) => {
-            const isRescheduledToThisDay = Boolean(
-               getLessonRescheduleTarget(lesson, day.dateObj),
-            )
-
-            const matchesDay = lesson.isRecurring
-               ? (lesson.daysOfWeek && lesson.daysOfWeek.length > 0
-                    ? lesson.daysOfWeek.includes(day.key)
-                    : lesson.dayOfWeek === day.key) || isRescheduledToThisDay
-               : new Date(lesson.startsAt).toISOString().split('T')[0] ===
-                    dayKeyDate || isRescheduledToThisDay
-
-            if (matchesDay && isLessonActiveOnDate(lesson, day.dateObj)) {
-               const { startsAt, endsAt } = getLessonTimes(lesson, day.dateObj)
-               const sMin =
-                  startsAt.getUTCHours() * 60 + startsAt.getUTCMinutes()
-               const eMin = endsAt.getUTCHours() * 60 + endsAt.getUTCMinutes()
-
-               if (sMin < minMinutes) minMinutes = sMin
-               if (eMin > maxMinutes) maxMinutes = eMin
-            }
-         })
-      })
-
-      if (minMinutes === Infinity || maxMinutes === -Infinity) {
-         minMinutes = 8 * 60
-         maxMinutes = 20 * 60
-      }
-
-      const sHour = Math.max(0, Math.floor(minMinutes / 60))
-      const eHour = Math.min(24, Math.ceil(maxMinutes / 60))
-
-      const slots: string[] = []
-      for (let h = sHour; h < eHour; h++) {
-         slots.push(`${String(h).padStart(2, '0')}:00`)
-      }
-
-      return {
-         startHour: sHour,
-         endHour: eHour,
-         timeSlots: slots,
-      }
-   }, [weekDates, visibleLessons, isSingleDayMobile, currentDate])
-
-   const totalHours = Math.max(1, endHour - startHour)
-   const totalHeightPx = totalHours * hourHeight
-
-   const getCurrentTimePosition = () => {
-      const hours = currentTime.getHours()
-      const minutes = currentTime.getMinutes()
-      const currentTotalMin = hours * 60 + minutes
-      const startTotalMin = startHour * 60
-      return ((currentTotalMin - startTotalMin) / 60) * hourHeight
-   }
+   const totalHeightPx = (endHour - startHour) * hourHeight
+   const nowPosition = calculateCurrentTimePosition(
+      currentTime,
+      startHour,
+      hourHeight,
+   )
 
    const gridColsClass =
       mobileViewMode === 'week'
@@ -276,18 +227,19 @@ export function ScheduleGrid({
                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 mb-0.5 opacity-60" />
                      Время
                   </div>
+
                   {weekDates.map((day) => {
                      const isSelected =
                         day.dateObj.toDateString() ===
                         currentDate.toDateString()
+                     const isVisible = isSelected || mobileViewMode === 'week'
+
                      return (
                         <div
                            key={day.key}
                            onClick={() => onSelectDate(day.dateObj)}
                            className={`py-1 sm:py-1.5 px-0.5 sm:px-1 border-r border-[#E5E0D8] last:border-r-0 flex-col items-center justify-center cursor-pointer transition-colors ${
-                              isSelected || mobileViewMode === 'week'
-                                 ? 'flex'
-                                 : 'hidden sm:flex'
+                              isVisible ? 'flex' : 'hidden sm:flex'
                            } ${day.isToday ? 'bg-[#E8F0E8]/60' : 'hover:bg-[#F5F2ED]/40'}`}
                         >
                            <span className="text-[9px] sm:text-[11px] font-medium text-[#8B857D] leading-none">
@@ -311,96 +263,26 @@ export function ScheduleGrid({
                   className={`grid ${gridColsClass} relative`}
                   style={{ minHeight: `${totalHeightPx}px` }}
                >
-                  <div className="bg-[#FDFCFB] flex flex-col text-right select-none sticky left-0 z-30 border-r border-[#E5E0D8]">
-                     {timeSlots.map((time) => (
-                        <div
-                           key={time}
-                           style={{ height: `${hourHeight}px` }}
-                           className="border-b border-[#F0EDE8] text-[8px] sm:text-[10px] text-[#B0A89E] font-medium pt-0.5 pr-1 sm:pr-1.5 bg-[#FDFCFB]"
-                        >
-                           {time}
-                        </div>
-                     ))}
-                  </div>
+                  <TimeGutter timeSlots={timeSlots} hourHeight={hourHeight} />
 
                   {weekDates.map((day) => {
                      const isSelected =
                         day.dateObj.toDateString() ===
                         currentDate.toDateString()
-
-                     const dayKeyDate = `${day.dateObj.getFullYear()}-${String(day.dateObj.getMonth() + 1).padStart(2, '0')}-${String(day.dateObj.getDate()).padStart(2, '0')}`
-
-                     const rawDayLessons = visibleLessons.filter((l) => {
-                        const isRescheduledToThisDay = Boolean(
-                           getLessonRescheduleTarget(l, day.dateObj),
-                        )
-
-                        const matchesDay = l.isRecurring
-                           ? (l.daysOfWeek && l.daysOfWeek.length > 0
-                                ? l.daysOfWeek.includes(day.key)
-                                : l.dayOfWeek === day.key) ||
-                             isRescheduledToThisDay
-                           : new Date(l.startsAt)
-                                .toISOString()
-                                .split('T')[0] === dayKeyDate ||
-                             isRescheduledToThisDay
-
-                        if (!matchesDay) return false
-                        return isLessonActiveOnDate(l, day.dateObj)
-                     })
-
-                     const layoutLessons = computeDayLayout(
-                        rawDayLessons,
-                        day.dateObj,
-                     )
-
-                     const nowPos = getCurrentTimePosition()
-                     const isNowVisible = nowPos >= 0 && nowPos <= totalHeightPx
+                     const isVisible = isSelected || mobileViewMode === 'week'
 
                      return (
-                        <div
+                        <DayColumn
                            key={day.key}
-                           className={`relative border-r border-[#F0EDE8] last:border-r-0 ${
-                              isSelected || mobileViewMode === 'week'
-                                 ? 'block'
-                                 : 'hidden sm:block'
-                           } ${day.isToday ? 'bg-[#E8F0E8]/10' : 'bg-white'}`}
-                        >
-                           {timeSlots.map((time) => (
-                              <div
-                                 key={time}
-                                 style={{ height: `${hourHeight}px` }}
-                                 className="border-b border-[#F0EDE8]/80 w-full"
-                              />
-                           ))}
-
-                           {day.isToday && isNowVisible && (
-                              <div
-                                 className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                                 style={{ top: `${nowPos}px` }}
-                              >
-                                 <div className="w-1.5 h-1.5 rounded-full bg-[#8BA888] -ml-[3px] ring-2 ring-[#8BA888]/20" />
-                                 <div className="flex-1 h-[1.5px] bg-[#8BA888]/70" />
-                              </div>
-                           )}
-
-                           {layoutLessons.map((item) => (
-                              <LessonCard
-                                 key={item.lesson.id}
-                                 lesson={item.lesson}
-                                 dayDate={day.dateObj}
-                                 baseHour={startHour}
-                                 hourHeight={hourHeight}
-                                 startsAtDate={item.startsAt}
-                                 endsAtDate={item.endsAt}
-                                 column={item.column}
-                                 totalColumns={item.totalColumns}
-                                 onClick={() =>
-                                    onSelectLesson(item.lesson, day.dateObj)
-                                 }
-                              />
-                           ))}
-                        </div>
+                           day={day}
+                           isVisible={isVisible}
+                           timeSlots={timeSlots}
+                           hourHeight={hourHeight}
+                           startHour={startHour}
+                           nowPosition={nowPosition}
+                           visibleLessons={visibleLessons}
+                           onSelectLesson={onSelectLesson}
+                        />
                      )
                   })}
                </div>

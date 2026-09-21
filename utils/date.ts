@@ -1,14 +1,12 @@
 import { monthNames } from '@/constants/schedule'
 import type { ApiLesson } from '@/types/schedule'
+import { DAY_INDICES } from '@/constants/schedule'
 
-const DAY_INDICES: Record<string, number> = {
-   SUNDAY: 0,
-   MONDAY: 1,
-   TUESDAY: 2,
-   WEDNESDAY: 3,
-   THURSDAY: 4,
-   FRIDAY: 5,
-   SATURDAY: 6,
+export function formatDayMonth(date: Date): string {
+   return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+   })
 }
 
 export function getStartOfWeek(date: Date) {

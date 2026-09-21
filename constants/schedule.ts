@@ -66,3 +66,21 @@ export const INITIAL_FORM = {
    color: '#8BA888',
    totalLessons: '',
 }
+export const INDEX_TO_DAY = [
+   'SUNDAY',
+   'MONDAY',
+   'TUESDAY',
+   'WEDNESDAY',
+   'THURSDAY',
+   'FRIDAY',
+   'SATURDAY',
+]
+export const DAY_INDICES: Record<string, number> = {
+   SUNDAY: 0,
+   MONDAY: 1,
+   TUESDAY: 2,
+   WEDNESDAY: 3,
+   THURSDAY: 4,
+   FRIDAY: 5,
+   SATURDAY: 6,
+}
