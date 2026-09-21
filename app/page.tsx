@@ -37,6 +37,11 @@ export default function SchedulePage() {
    const isAdmin = user?.role === 'ADMIN'
    const canEditComment = user?.role === 'ADMIN' || user?.role === 'TEACHER'
 
+   const isAnyModalOpen =
+      Boolean(lessonDetails.activeLesson) ||
+      lessonForm.isOpen ||
+      isDeleteConfirmOpen
+
    const handlePrevDay = () => {
       const prev = new Date(currentDate)
       prev.setDate(prev.getDate() - 1)
@@ -79,9 +84,12 @@ export default function SchedulePage() {
                   currentTime={currentTime}
                   visibleLessons={visibleLessons}
                   mobileViewMode={mobileViewMode}
+                  isModalOpen={isAnyModalOpen}
                   onSelectDate={setCurrentDate}
                   onPrevDay={handlePrevDay}
                   onNextDay={handleNextDay}
+                  onPrevWeek={prevWeek}
+                  onNextWeek={nextWeek}
                   onSelectLesson={(lesson, dayDate) =>
                      lessonDetails.openDetails(lesson, dayDate)
                   }

@@ -1,13 +1,14 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Clock } from 'lucide-react'
 import type { ApiLesson } from '@/types/schedule'
 import { LessonCard } from './LessonCard'
 import { computeDayLayout } from '@/utils/layout'
 import { getLessonRescheduleTarget, isLessonActiveOnDate } from '@/utils/date'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { useDaySwipe } from '@/hooks/useDaySwipe'
+import { useScheduleSwipe } from '@/hooks/useScheduleSwipe'
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation'
 import {
    DayItem,
    calculateScheduleTimeBounds,
@@ -20,10 +21,13 @@ interface ScheduleGridProps {
    currentTime: Date
    visibleLessons: ApiLesson[]
    mobileViewMode?: 'day' | 'week'
+   isModalOpen?: boolean
    onSelectDate: (date: Date) => void
    onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
    onPrevDay?: () => void
    onNextDay?: () => void
+   onPrevWeek: () => void
+   onNextWeek: () => void
 }
 
 interface CurrentTimeIndicatorProps {
@@ -150,12 +154,16 @@ export function ScheduleGrid({
    currentTime,
    visibleLessons,
    mobileViewMode = 'day',
+   isModalOpen = false,
    onSelectDate,
    onSelectLesson,
    onPrevDay,
    onNextDay,
+   onPrevWeek,
+   onNextWeek,
 }: ScheduleGridProps) {
    const isMobile = useIsMobile()
+   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
    const handlePrev = () => {
       if (onPrevDay) return onPrevDay()
@@ -171,21 +179,33 @@ export function ScheduleGrid({
       onSelectDate(next)
    }
 
-   const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useDaySwipe({
-      enabled: isMobile && mobileViewMode === 'day',
-      onPrevDay: handlePrev,
-      onNextDay: handleNext,
+   const isDayMode = isMobile && mobileViewMode === 'day'
+
+   useKeyboardNavigation({
+      enabled: !isModalOpen,
+      onPrev: isDayMode ? handlePrev : onPrevWeek,
+      onNext: isDayMode ? handleNext : onNextWeek,
    })
 
+   const { handleTouchStart, handleTouchEnd, handleTouchCancel } =
+      useScheduleSwipe({
+         containerRef: scrollContainerRef,
+         isMobile,
+         isDayMode,
+         onPrevDay: handlePrev,
+         onNextDay: handleNext,
+         onPrevWeek,
+         onNextWeek,
+      })
+
    const hourHeight = isMobile ? 44 : 56
-   const isSingleDayMobile = isMobile && mobileViewMode === 'day'
 
    const targetDays = useMemo(() => {
-      if (!isSingleDayMobile) return weekDates
+      if (!isDayMode) return weekDates
       return weekDates.filter(
          (d) => d.dateObj.toDateString() === currentDate.toDateString(),
       )
-   }, [isSingleDayMobile, weekDates, currentDate])
+   }, [isDayMode, weekDates, currentDate])
 
    const { startHour, endHour, timeSlots } = useMemo(
       () => calculateScheduleTimeBounds(targetDays, visibleLessons),
@@ -215,8 +235,9 @@ export function ScheduleGrid({
          className="flex-1 bg-white rounded-xl border border-[#E5E0D8] shadow-2xs flex flex-col overflow-hidden select-none"
       >
          <div
+            ref={scrollContainerRef}
             className={`flex-1 overflow-auto w-full relative custom-scrollbar bg-white ${
-               mobileViewMode === 'day' ? 'touch-pan-y' : ''
+               isDayMode ? 'touch-pan-y' : ''
             }`}
          >
             <div className={`${containerWidthClass} relative`}>
