@@ -140,7 +140,7 @@ export function LessonCard({
                   </span>
                </div>
 
-               <div className="text-[8px] sm:text-[9px] truncate leading-none mt-0.5">
+               <div className="text-[8px] sm:text-[9px] mt-0.5 min-w-0">
                   <TeacherName fullName={teacherName} />
                </div>
             </div>
