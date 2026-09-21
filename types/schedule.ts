@@ -74,17 +74,14 @@ export interface ApiLesson {
 
 export interface FormDataState {
    subject: string
-   comment: string
    date: string
-   dayOfWeek: string
-   daysOfWeek: string[]
    startTime: string
    endTime: string
-   room: string
-   teacherId: string
-   customTeacherName: string
-   teacherByDay: Record<string, string>
-   timeByDay: Record<string, DayTimeSlot>
    color: string
+   customTeacherName: string
    totalLessons: string
+   dayOfWeek: string
+   daysOfWeek: string[]
+   teacherByDay?: Record<string, string[] | string>
+   timeByDay?: Record<string, { startTime: string; endTime: string }>
 }

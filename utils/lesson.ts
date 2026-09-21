@@ -66,12 +66,21 @@ export function resolveLessonTeacher(
       return dateOverride.customTeacherName ?? undefined
    }
 
-   const teacher =
-      lesson.teacherByDay?.[dayKey] ??
-      lesson.customTeacherName ??
-      lesson.teacher?.name
+   const daySpecificTeacher = lesson.teacherByDay?.[dayKey]
+   if (daySpecificTeacher) {
+      if (Array.isArray(daySpecificTeacher)) {
+         const joined = daySpecificTeacher.filter(Boolean).join(', ')
+         if (joined) return joined
+      } else if (
+         typeof daySpecificTeacher === 'string' &&
+         daySpecificTeacher.trim()
+      ) {
+         return daySpecificTeacher
+      }
+   }
 
-   return teacher ?? undefined
+   const defaultTeacher = lesson.customTeacherName ?? lesson.teacher?.name
+   return defaultTeacher ?? undefined
 }
 
 export function resolveLessonComment(lesson: ApiLesson, dayDate: Date): string {

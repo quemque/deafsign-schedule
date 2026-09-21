@@ -60,16 +60,107 @@ export function toggleFormDayOfWeek(
    }
 }
 
-export function updateDayTeacher(
+export function getMainTeachersList(customTeacherName: string): string[] {
+   if (!customTeacherName) return ['']
+
+   const parts = customTeacherName.split(',')
+   return parts.map((part, index) =>
+      index > 0 && part.startsWith(' ') ? part.slice(1) : part,
+   )
+}
+
+export function updateMainTeacher(
    form: FormDataState,
-   dayKey: string,
+   index: number,
    value: string,
 ): FormDataState {
+   const sanitizedValue = value.replace(/,/g, '')
+   const teachers = [...getMainTeachersList(form.customTeacherName)]
+   teachers[index] = sanitizedValue
+
+   return {
+      ...form,
+      customTeacherName: teachers.join(', '),
+   }
+}
+
+export function addMainTeacher(form: FormDataState): FormDataState {
+   const teachers = [...getMainTeachersList(form.customTeacherName), '']
+   return {
+      ...form,
+      customTeacherName: teachers.join(', '),
+   }
+}
+
+export function removeMainTeacher(
+   form: FormDataState,
+   index: number,
+): FormDataState {
+   const current = getMainTeachersList(form.customTeacherName)
+   const next = current.filter((_, i) => i !== index)
+   return {
+      ...form,
+      customTeacherName: next.length > 0 ? next.join(', ') : '',
+   }
+}
+
+export function getDayTeachersList(
+   teacherByDay: Record<string, string[] | string> | undefined,
+   dayKey: string,
+): string[] {
+   const value = teacherByDay?.[dayKey]
+   if (Array.isArray(value)) {
+      return value.length > 0 ? value : ['']
+   }
+   if (typeof value === 'string' && value.trim()) {
+      return [value]
+   }
+   return ['']
+}
+
+export function addDayTeacher(
+   form: FormDataState,
+   dayKey: string,
+): FormDataState {
+   const current = getDayTeachersList(form.teacherByDay, dayKey)
    return {
       ...form,
       teacherByDay: {
          ...(form.teacherByDay || {}),
-         [dayKey]: value,
+         [dayKey]: [...current, ''],
+      },
+   }
+}
+
+export function updateDayTeacher(
+   form: FormDataState,
+   dayKey: string,
+   index: number,
+   value: string,
+): FormDataState {
+   const current = [...getDayTeachersList(form.teacherByDay, dayKey)]
+   current[index] = value
+   return {
+      ...form,
+      teacherByDay: {
+         ...(form.teacherByDay || {}),
+         [dayKey]: current,
+      },
+   }
+}
+
+export function removeDayTeacher(
+   form: FormDataState,
+   dayKey: string,
+   index: number,
+): FormDataState {
+   const current = getDayTeachersList(form.teacherByDay, dayKey)
+   const next = current.filter((_, i) => i !== index)
+   return {
+      ...form,
+      teacherByDay: {
+         ...(form.teacherByDay || {}),
+         [dayKey]: next.length > 0 ? next : [''],
       },
    }
 }

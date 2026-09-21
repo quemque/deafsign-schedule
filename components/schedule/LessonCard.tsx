@@ -10,6 +10,7 @@ import {
    resolveLessonComment,
    resolveLessonTeacher,
 } from '@/utils/lesson'
+import { TeacherName } from './TeacherName'
 
 interface LessonCardProps {
    lesson: ApiLesson
@@ -23,10 +24,6 @@ interface LessonCardProps {
    onClick: () => void
 }
 
-interface TeacherNameProps {
-   fullName?: string
-}
-
 interface LessonBadgesProps {
    isRescheduled: boolean
    isRecurring: boolean
@@ -38,22 +35,6 @@ interface LessonBadgesProps {
 interface LessonCommentProps {
    text: string
    isCompact: boolean
-}
-
-function TeacherName({ fullName }: TeacherNameProps) {
-   if (!fullName) {
-      return <span className="opacity-50 italic">Без преподавателя</span>
-   }
-
-   const parts = fullName.trim().split(/\s+/)
-   const [lastName, ...rest] = parts
-
-   return (
-      <span className="truncate">
-         <span className="text-red-500 font-bold">{lastName}</span>
-         {rest.length > 0 ? ` ${rest.join(' ')}` : ''}
-      </span>
-   )
 }
 
 function LessonBadges({

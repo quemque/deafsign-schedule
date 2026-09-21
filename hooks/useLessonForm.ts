@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
 import type { ApiLesson, FormDataState } from '@/types/schedule'
-import { INITIAL_FORM } from '@/constants/schedule'
+import { INITIAL_FORM, INDEX_TO_DAY } from '@/constants/schedule'
 import { scheduleApi } from '@/services/scheduleApi'
 
 export function useLessonForm(onSuccess?: () => void) {
@@ -17,20 +19,11 @@ export function useLessonForm(onSuccess?: () => void) {
       setEditingDate(null)
       setInitialTeacherName('')
       setMode('once')
+
       const yyyy = currentDate.getFullYear()
       const mm = String(currentDate.getMonth() + 1).padStart(2, '0')
       const dd = String(currentDate.getDate()).padStart(2, '0')
-
-      const dayKeys = [
-         'SUNDAY',
-         'MONDAY',
-         'TUESDAY',
-         'WEDNESDAY',
-         'THURSDAY',
-         'FRIDAY',
-         'SATURDAY',
-      ]
-      const currentDayKey = dayKeys[currentDate.getDay()]
+      const currentDayKey = INDEX_TO_DAY[currentDate.getDay()]
 
       setForm({
          ...INITIAL_FORM,
@@ -54,34 +47,8 @@ export function useLessonForm(onSuccess?: () => void) {
       const dd = String(targetDate.getDate()).padStart(2, '0')
       const dateKey = `${yyyy}-${mm}-${dd}`
 
-      const dayKeys = [
-         'SUNDAY',
-         'MONDAY',
-         'TUESDAY',
-         'WEDNESDAY',
-         'THURSDAY',
-         'FRIDAY',
-         'SATURDAY',
-      ]
-      const dayKey = dayKeys[targetDate.getDay()]
-
-      const dateOverride = lesson.overrides?.find((o) => {
-         const oDateStr =
-            typeof o.date === 'string' ? o.date : new Date(o.date).toISOString()
-         return oDateStr.startsWith(dateKey)
-      })
-
-      const daySpecificTeacher = lesson.teacherByDay?.[dayKey]
-
-      const currentTeacher =
-         dateOverride !== undefined
-            ? dateOverride.customTeacherName || ''
-            : daySpecificTeacher ||
-              lesson.customTeacherName ||
-              lesson.teacher?.name ||
-              ''
-
-      setInitialTeacherName(currentTeacher)
+      const teacherName = lesson.customTeacherName ?? lesson.teacher?.name ?? ''
+      setInitialTeacherName(teacherName)
 
       const formatTime = (iso: string | Date) =>
          new Date(iso).toLocaleTimeString('ru-RU', {
@@ -99,16 +66,14 @@ export function useLessonForm(onSuccess?: () => void) {
 
       setForm({
          subject: lesson.subject,
-         comment: '',
          date: dateKey,
          dayOfWeek: loadedDays[0] || 'MONDAY',
          daysOfWeek: loadedDays,
          startTime: formatTime(lesson.startsAt),
          endTime: formatTime(lesson.endsAt),
-         room: '',
-         teacherId: lesson.teacher?.id || lesson.teacherId || '',
-         customTeacherName: lesson.customTeacherName || '',
-         teacherByDay: lesson.teacherByDay || {},
+         customTeacherName: teacherName,
+         teacherByDay:
+            (lesson.teacherByDay as Record<string, string[] | string>) || {},
          timeByDay: lesson.timeByDay || {},
          color: lesson.color || '#8BA888',
          totalLessons: lesson.totalLessons ? String(lesson.totalLessons) : '',
@@ -144,7 +109,8 @@ export function useLessonForm(onSuccess?: () => void) {
       const payload = selectedLesson
          ? {
               subject: form.subject,
-              teacherId: form.teacherId || null,
+              teacherId:
+                 selectedLesson.teacherId || selectedLesson.teacher?.id || null,
               customTeacherName: form.customTeacherName || null,
               teacherByDay: form.teacherByDay,
               timeByDay: form.timeByDay,

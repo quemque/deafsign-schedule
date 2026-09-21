@@ -11,13 +11,30 @@ export function TeacherName({
       return <span className="opacity-50 italic">{fallbackText}</span>
    }
 
-   const parts = fullName.trim().split(/\s+/)
-   const [lastName, ...rest] = parts
+   const teachers = fullName
+      .split(/[,/]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+   if (teachers.length === 0) {
+      return <span className="opacity-50 italic">{fallbackText}</span>
+   }
 
    return (
       <span className="truncate">
-         <span className="text-red-500 font-bold">{lastName}</span>
-         {rest.length > 0 ? ` ${rest.join(' ')}` : ''}
+         {teachers.map((teacher, index) => {
+            const parts = teacher.split(/\s+/)
+            const lastName = parts[0]
+            const rest = parts.slice(1).join(' ')
+
+            return (
+               <span key={index}>
+                  <span className="text-red-500 font-bold">{lastName}</span>
+                  {rest ? ` ${rest}` : ''}
+                  {index < teachers.length - 1 ? ', ' : ''}
+               </span>
+            )
+         })}
       </span>
    )
 }

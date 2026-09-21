@@ -7,11 +7,17 @@ import type { FormDataState } from '@/types/schedule'
 import { ColorPicker } from './ColorPicker'
 import { DayOverridesList } from './DayOverridesList'
 import { TeacherScopeModal } from './TeacherScopeModal'
+import { MainTeacherFields } from './MainTeacherFields'
 import {
+   addDayTeacher,
+   addMainTeacher,
+   removeDayTeacher,
+   removeMainTeacher,
    toggleFormDayOfWeek,
    updateDayTeacher,
    updateDayTime,
    updateFormDate,
+   updateMainTeacher,
 } from '@/utils/lessonForm'
 
 interface LessonFormModalProps {
@@ -76,8 +82,9 @@ export function LessonFormModal({
    const handleFormSubmit = (e: React.FormEvent) => {
       e.preventDefault()
 
-      const hasTeacherChanged =
-         form.customTeacherName.trim() !== initialTeacherName.trim()
+      const currentTeacher = String(form.customTeacherName || '').trim()
+      const initialTeacher = String(initialTeacherName || '').trim()
+      const hasTeacherChanged = currentTeacher !== initialTeacher
 
       if (isEdit && mode === 'weekly' && hasTeacherChanged) {
          setShowTeacherScopeModal(true)
@@ -141,23 +148,16 @@ export function LessonFormModal({
                         />
                      </div>
 
-                     <div>
-                        <label className="text-[10px] font-medium text-[#8B857D] mb-1 block pl-1">
-                           Основной преподаватель
-                        </label>
-                        <input
-                           type="text"
-                           placeholder="ФИО преподавателя"
-                           value={form.customTeacherName}
-                           onChange={(e) =>
-                              onFormChange({
-                                 ...form,
-                                 customTeacherName: e.target.value,
-                              })
-                           }
-                           className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
-                        />
-                     </div>
+                     <MainTeacherFields
+                        customTeacherName={form.customTeacherName}
+                        onAdd={() => onFormChange(addMainTeacher(form))}
+                        onUpdate={(index, value) =>
+                           onFormChange(updateMainTeacher(form, index, value))
+                        }
+                        onRemove={(index) =>
+                           onFormChange(removeMainTeacher(form, index))
+                        }
+                     />
 
                      {isRecurringMode && (
                         <div>
@@ -281,9 +281,17 @@ export function LessonFormModal({
                         <DayOverridesList
                            daysOfWeek={form.daysOfWeek || []}
                            form={form}
-                           onTeacherChange={(dayKey, value) =>
+                           onAddTeacher={(dayKey) =>
+                              onFormChange(addDayTeacher(form, dayKey))
+                           }
+                           onUpdateTeacher={(dayKey, index, value) =>
                               onFormChange(
-                                 updateDayTeacher(form, dayKey, value),
+                                 updateDayTeacher(form, dayKey, index, value),
+                              )
+                           }
+                           onRemoveTeacher={(dayKey, index) =>
+                              onFormChange(
+                                 removeDayTeacher(form, dayKey, index),
                               )
                            }
                            onTimeChange={(dayKey, field, value) =>
