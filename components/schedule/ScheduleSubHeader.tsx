@@ -7,30 +7,14 @@ import {
    Calendar,
    CalendarDays,
 } from 'lucide-react'
-
-export interface DayItem {
-   key: string
-   label: string
-   short: string
-   dateObj: Date
-   dateNumber: number
-   isToday: boolean
-}
-
-export type MobileViewMode = 'day' | 'week'
+import { useScheduleStore } from '@/stores/useScheduleStore'
+import { useModalStore } from '@/stores/useModalStore'
+import type { DayItem } from '@/utils/scheduleTime'
 
 interface ScheduleSubHeaderProps {
    currentWeekLabel: string
    weekDates: DayItem[]
-   currentDate: Date
    isAdmin: boolean
-   mobileViewMode?: MobileViewMode
-   onMobileViewModeChange?: (mode: MobileViewMode) => void
-   onPrevWeek: () => void
-   onNextWeek: () => void
-   onSetToday: () => void
-   onSelectDate: (date: Date) => void
-   onOpenCreate: () => void
 }
 
 interface WeekNavigationProps {
@@ -41,8 +25,8 @@ interface WeekNavigationProps {
 }
 
 interface MobileViewToggleProps {
-   mode: MobileViewMode
-   onChange: (mode: MobileViewMode) => void
+   mode: 'day' | 'week'
+   onChange: (mode: 'day' | 'week') => void
 }
 
 interface MobileDayPickerProps {
@@ -201,16 +185,20 @@ function MobileDayPicker({
 export function ScheduleSubHeader({
    currentWeekLabel,
    weekDates,
-   currentDate,
    isAdmin,
-   mobileViewMode = 'day',
-   onMobileViewModeChange,
-   onPrevWeek,
-   onNextWeek,
-   onSetToday,
-   onSelectDate,
-   onOpenCreate,
 }: ScheduleSubHeaderProps) {
+   const currentDate = useScheduleStore((state) => state.currentDate)
+   const mobileViewMode = useScheduleStore((state) => state.mobileViewMode)
+   const setMobileViewMode = useScheduleStore(
+      (state) => state.setMobileViewMode,
+   )
+   const prevWeek = useScheduleStore((state) => state.prevWeek)
+   const nextWeek = useScheduleStore((state) => state.nextWeek)
+   const setToday = useScheduleStore((state) => state.setToday)
+   const setCurrentDate = useScheduleStore((state) => state.setCurrentDate)
+
+   const openCreateForm = useModalStore((state) => state.openCreateForm)
+
    const monthLabel = formatMonthYear(currentDate)
 
    return (
@@ -219,20 +207,22 @@ export function ScheduleSubHeader({
             <div className="flex items-center justify-between gap-2">
                <WeekNavigation
                   currentWeekLabel={currentWeekLabel}
-                  onSetToday={onSetToday}
-                  onPrevWeek={onPrevWeek}
-                  onNextWeek={onNextWeek}
+                  onSetToday={setToday}
+                  onPrevWeek={prevWeek}
+                  onNextWeek={nextWeek}
                />
 
                <div className="flex items-center gap-1.5 shrink-0">
-                  {onMobileViewModeChange && (
-                     <MobileViewToggle
-                        mode={mobileViewMode}
-                        onChange={onMobileViewModeChange}
+                  <MobileViewToggle
+                     mode={mobileViewMode}
+                     onChange={setMobileViewMode}
+                  />
+
+                  {isAdmin && (
+                     <CreateLessonButton
+                        onClick={() => openCreateForm(currentDate)}
                      />
                   )}
-
-                  {isAdmin && <CreateLessonButton onClick={onOpenCreate} />}
                </div>
             </div>
 
@@ -247,7 +237,7 @@ export function ScheduleSubHeader({
                <MobileDayPicker
                   weekDates={weekDates}
                   currentDate={currentDate}
-                  onSelectDate={onSelectDate}
+                  onSelectDate={setCurrentDate}
                />
             )}
          </div>

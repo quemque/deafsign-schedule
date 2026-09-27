@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
    Clock,
    User as UserIcon,
@@ -10,7 +10,6 @@ import {
    MessageSquare,
    CalendarClock,
 } from 'lucide-react'
-import type { ApiLesson } from '@/types/schedule'
 import {
    formatDateKey,
    formatUtcTime,
@@ -18,22 +17,10 @@ import {
    resolveLessonDisplayTimes,
    resolveLessonTeacher,
 } from '@/utils/lesson'
+import { useModalStore } from '@/stores/useModalStore'
+import { useCurrentUserQuery } from '@/hooks/useScheduleQueries'
+import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 import { TeacherName } from './TeacherName'
-import { RescheduleModal } from './RescheduleModal'
-
-interface LessonDetailsModalProps {
-   lesson: ApiLesson
-   date?: Date
-   isAdmin: boolean
-   canEditComment: boolean
-   commentText: string
-   onCommentTextChange: (val: string) => void
-   onSaveComment: () => void
-   onClose: () => void
-   onEdit: (lesson: ApiLesson, activeDate?: Date) => void
-   onDelete: (id: string) => void
-   onUpdate?: () => void
-}
 
 interface HeaderProps {
    subject: string
@@ -138,9 +125,6 @@ function LessonInfoGrid({
    endsAt,
    teacherName,
 }: InfoGridProps) {
-   const startTimeStr = formatUtcTime(new Date(startsAt))
-   const endTimeStr = formatUtcTime(new Date(endsAt))
-
    return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
          <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-[#FDFCFB] border border-[#F0EDE8]">
@@ -155,7 +139,8 @@ function LessonInfoGrid({
                   Время
                </span>
                <span className="text-[11px] sm:text-xs font-bold text-[#3E3A35] truncate block">
-                  {startTimeStr} – {endTimeStr}
+                  {formatUtcTime(new Date(startsAt))} –{' '}
+                  {formatUtcTime(new Date(endsAt))}
                </span>
             </div>
          </div>
@@ -173,7 +158,7 @@ function LessonInfoGrid({
                <span className="block text-[9px] sm:text-[11px] font-medium text-[#B0A89E] uppercase">
                   Преподаватель
                </span>
-               <span className="text-[11px] sm:text-xs font-bold text-[#3E3A35] truncate block">
+               <span className="text-[11px] sm:text-xs font-bold text-[#3E3A35] block min-w-0">
                   <TeacherName
                      fullName={teacherName}
                      fallbackText="Не назначен"
@@ -194,7 +179,7 @@ function LessonCommentSection({
    return (
       <div>
          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#B0A89E] mb-1.5 sm:mb-2 flex items-center gap-1.5">
-            <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Комментарий
+            <MessageSquare className="w-3.5 h-3.5" /> Комментарий
          </h4>
 
          {canEdit ? (
@@ -278,26 +263,36 @@ function LessonDetailsFooter({
    )
 }
 
-export function LessonDetailsModal({
-   lesson,
-   date,
-   isAdmin,
-   canEditComment,
-   commentText,
-   onCommentTextChange,
-   onSaveComment,
-   onClose,
-   onEdit,
-   onDelete,
-   onUpdate,
-}: LessonDetailsModalProps) {
-   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false)
+export function LessonDetailsModal() {
+   const {
+      detailsModal,
+      closeDetails,
+      openEditForm,
+      openDeleteConfirm,
+      openReschedule,
+   } = useModalStore()
+   const { data: user } = useCurrentUserQuery()
+   const { saveComment } = useScheduleMutations()
 
-   const displayDate = date || new Date(lesson.startsAt)
+   const { lesson, date, isOpen } = detailsModal
+
+   const [commentText, setCommentText] = useState('')
+
+   const displayDate = date || (lesson ? new Date(lesson.startsAt) : new Date())
+
+   useEffect(() => {
+      if (!lesson || !isOpen) return
+      const currentComment = resolveLessonComment(lesson, displayDate)
+      setCommentText(currentComment)
+   }, [lesson, isOpen, displayDate])
+
+   if (!isOpen || !lesson) return null
+
+   const isAdmin = user?.role === 'ADMIN'
+   const canEditComment = user?.role === 'ADMIN' || user?.role === 'TEACHER'
+
    const dateKey = formatDateKey(displayDate)
    const teacherName = resolveLessonTeacher(lesson, displayDate)
-   const activeComment =
-      commentText || resolveLessonComment(lesson, displayDate)
    const { startsAt, endsAt, isRescheduled } = resolveLessonDisplayTimes(
       lesson,
       displayDate,
@@ -307,62 +302,64 @@ export function LessonDetailsModal({
    const startTimeStr = formatUtcTime(new Date(startsAt))
    const endTimeStr = formatUtcTime(new Date(endsAt))
 
-   const handleRescheduleSuccess = () => {
-      onClose()
-      onUpdate?.()
+   const handleSaveComment = async () => {
+      const yyyy = displayDate.getFullYear()
+      const mm = String(displayDate.getMonth() + 1).padStart(2, '0')
+      const dd = String(displayDate.getDate()).padStart(2, '0')
+      const targetDate = `${yyyy}-${mm}-${dd}`
+
+      await saveComment({
+         lessonId: lesson.id,
+         date: targetDate,
+         text: commentText,
+      })
+      closeDetails()
    }
 
    return (
-      <>
-         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#2C2824]/40 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-lg max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden">
-               <LessonDetailsHeader
-                  subject={lesson.subject}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#2C2824]/40 backdrop-blur-xs animate-in fade-in duration-200">
+         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-lg max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden">
+            <LessonDetailsHeader
+               subject={lesson.subject}
+               baseColor={baseColor}
+               displayDate={displayDate}
+               hasExplicitDate={Boolean(date)}
+               isRescheduled={isRescheduled}
+               isRecurring={lesson.isRecurring}
+               totalLessons={lesson.totalLessons}
+               onClose={closeDetails}
+            />
+
+            <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-5 overflow-y-auto custom-scrollbar flex-1">
+               <LessonInfoGrid
                   baseColor={baseColor}
-                  displayDate={displayDate}
-                  hasExplicitDate={Boolean(date)}
-                  isRescheduled={isRescheduled}
-                  isRecurring={lesson.isRecurring}
-                  totalLessons={lesson.totalLessons}
-                  onClose={onClose}
+                  startsAt={startsAt}
+                  endsAt={endsAt}
+                  teacherName={teacherName}
                />
 
-               <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-5 overflow-y-auto custom-scrollbar flex-1">
-                  <LessonInfoGrid
-                     baseColor={baseColor}
-                     startsAt={startsAt}
-                     endsAt={endsAt}
-                     teacherName={teacherName}
-                  />
-
-                  <LessonCommentSection
-                     canEdit={canEditComment}
-                     text={activeComment}
-                     onChange={onCommentTextChange}
-                     onSave={onSaveComment}
-                  />
-               </div>
-
-               <LessonDetailsFooter
-                  isAdmin={isAdmin}
-                  baseColor={baseColor}
-                  onDelete={() => onDelete(lesson.id)}
-                  onOpenReschedule={() => setIsRescheduleOpen(true)}
-                  onEdit={() => onEdit(lesson, displayDate)}
-                  onClose={onClose}
+               <LessonCommentSection
+                  canEdit={canEditComment}
+                  text={commentText}
+                  onChange={setCommentText}
+                  onSave={handleSaveComment}
                />
             </div>
-         </div>
 
-         <RescheduleModal
-            isOpen={isRescheduleOpen}
-            lessonId={lesson.id}
-            dateKey={dateKey}
-            initialStartTime={startTimeStr}
-            initialEndTime={endTimeStr}
-            onClose={() => setIsRescheduleOpen(false)}
-            onSuccess={handleRescheduleSuccess}
-         />
-      </>
+            <LessonDetailsFooter
+               isAdmin={isAdmin}
+               baseColor={baseColor}
+               onDelete={() => openDeleteConfirm(lesson, displayDate)}
+               onOpenReschedule={() =>
+                  openReschedule(lesson.id, dateKey, startTimeStr, endTimeStr)
+               }
+               onEdit={() => {
+                  closeDetails()
+                  openEditForm(lesson, displayDate)
+               }}
+               onClose={closeDetails}
+            />
+         </div>
+      </div>
    )
 }

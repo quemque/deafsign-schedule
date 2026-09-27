@@ -1,95 +1,89 @@
 'use client'
 
-import { useState } from 'react'
-import type { ApiLesson, FormDataState } from '@/types/schedule'
+import { useState, useEffect } from 'react'
+import type { FormDataState } from '@/types/schedule'
 import { INITIAL_FORM, INDEX_TO_DAY } from '@/constants/schedule'
-import { scheduleApi } from '@/services/scheduleApi'
+import { useModalStore } from '@/stores/useModalStore'
+import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 
-export function useLessonForm(onSuccess?: () => void) {
-   const [isOpen, setIsOpen] = useState(false)
-   const [selectedLesson, setSelectedLesson] = useState<ApiLesson | null>(null)
-   const [editingDate, setEditingDate] = useState<Date | null>(null)
-   const [initialTeacherName, setInitialTeacherName] = useState('')
+export function useLessonForm() {
+   const formModal = useModalStore((state) => state.formModal)
+   const closeForm = useModalStore((state) => state.closeForm)
+   const { createLesson, updateLesson } = useScheduleMutations()
+
    const [mode, setMode] = useState<'once' | 'weekly'>('once')
    const [form, setForm] = useState<FormDataState>(INITIAL_FORM)
+   const [initialTeacherName, setInitialTeacherName] = useState('')
    const [error, setError] = useState('')
 
-   const openCreate = (currentDate: Date) => {
-      setSelectedLesson(null)
-      setEditingDate(null)
-      setInitialTeacherName('')
-      setMode('once')
+   useEffect(() => {
+      if (!formModal.isOpen) return
 
-      const yyyy = currentDate.getFullYear()
-      const mm = String(currentDate.getMonth() + 1).padStart(2, '0')
-      const dd = String(currentDate.getDate()).padStart(2, '0')
-      const currentDayKey = INDEX_TO_DAY[currentDate.getDay()]
+      if (formModal.isEdit && formModal.lesson) {
+         const lesson = formModal.lesson
+         const targetDate = formModal.activeDate || new Date(lesson.startsAt)
 
-      setForm({
-         ...INITIAL_FORM,
-         date: `${yyyy}-${mm}-${dd}`,
-         dayOfWeek: currentDayKey,
-         daysOfWeek: [currentDayKey],
-         teacherByDay: {},
-         timeByDay: {},
-      })
-      setError('')
-      setIsOpen(true)
-   }
+         const yyyy = targetDate.getFullYear()
+         const mm = String(targetDate.getMonth() + 1).padStart(2, '0')
+         const dd = String(targetDate.getDate()).padStart(2, '0')
+         const dateKey = `${yyyy}-${mm}-${dd}`
 
-   const openEdit = (lesson: ApiLesson, activeDate?: Date) => {
-      setSelectedLesson(lesson)
-      const targetDate = activeDate || new Date(lesson.startsAt)
-      setEditingDate(targetDate)
+         const teacherName =
+            lesson.customTeacherName ?? lesson.teacher?.name ?? ''
+         setInitialTeacherName(teacherName)
 
-      const yyyy = targetDate.getFullYear()
-      const mm = String(targetDate.getMonth() + 1).padStart(2, '0')
-      const dd = String(targetDate.getDate()).padStart(2, '0')
-      const dateKey = `${yyyy}-${mm}-${dd}`
+         const formatTime = (iso: string | Date) =>
+            new Date(iso).toLocaleTimeString('ru-RU', {
+               timeZone: 'UTC',
+               hour: '2-digit',
+               minute: '2-digit',
+            })
 
-      const teacherName = lesson.customTeacherName ?? lesson.teacher?.name ?? ''
-      setInitialTeacherName(teacherName)
+         const loadedDays =
+            lesson.daysOfWeek && lesson.daysOfWeek.length > 0
+               ? lesson.daysOfWeek
+               : lesson.dayOfWeek
+                 ? [lesson.dayOfWeek]
+                 : ['MONDAY']
 
-      const formatTime = (iso: string | Date) =>
-         new Date(iso).toLocaleTimeString('ru-RU', {
-            timeZone: 'UTC',
-            hour: '2-digit',
-            minute: '2-digit',
+         setForm({
+            subject: lesson.subject,
+            date: dateKey,
+            dayOfWeek: loadedDays[0] || 'MONDAY',
+            daysOfWeek: loadedDays,
+            startTime: formatTime(lesson.startsAt),
+            endTime: formatTime(lesson.endsAt),
+            customTeacherName: teacherName,
+            teacherByDay:
+               (lesson.teacherByDay as Record<string, string[] | string>) || {},
+            timeByDay: lesson.timeByDay || {},
+            color: lesson.color || '#8BA888',
+            totalLessons: lesson.totalLessons
+               ? String(lesson.totalLessons)
+               : '',
          })
+         setMode(lesson.isRecurring ? 'weekly' : 'once')
+         setError('')
+      } else {
+         const referenceDate = formModal.activeDate || new Date()
+         const yyyy = referenceDate.getFullYear()
+         const mm = String(referenceDate.getMonth() + 1).padStart(2, '0')
+         const dd = String(referenceDate.getDate()).padStart(2, '0')
+         const currentDayKey = INDEX_TO_DAY[referenceDate.getDay()]
 
-      const loadedDays =
-         lesson.daysOfWeek && lesson.daysOfWeek.length > 0
-            ? lesson.daysOfWeek
-            : lesson.dayOfWeek
-              ? [lesson.dayOfWeek]
-              : ['MONDAY']
-
-      setForm({
-         subject: lesson.subject,
-         date: dateKey,
-         dayOfWeek: loadedDays[0] || 'MONDAY',
-         daysOfWeek: loadedDays,
-         startTime: formatTime(lesson.startsAt),
-         endTime: formatTime(lesson.endsAt),
-         customTeacherName: teacherName,
-         teacherByDay:
-            (lesson.teacherByDay as Record<string, string[] | string>) || {},
-         timeByDay: lesson.timeByDay || {},
-         color: lesson.color || '#8BA888',
-         totalLessons: lesson.totalLessons ? String(lesson.totalLessons) : '',
-      })
-      setMode(lesson.isRecurring ? 'weekly' : 'once')
-      setError('')
-      setIsOpen(true)
-   }
-
-   const closeForm = () => {
-      setIsOpen(false)
-      setSelectedLesson(null)
-      setEditingDate(null)
-      setInitialTeacherName('')
-      setError('')
-   }
+         setForm({
+            ...INITIAL_FORM,
+            date: `${yyyy}-${mm}-${dd}`,
+            dayOfWeek: currentDayKey,
+            daysOfWeek: [currentDayKey],
+            teacherByDay: {},
+            timeByDay: {},
+         })
+         setInitialTeacherName('')
+         setMode('once')
+         setError('')
+      }
+   }, [formModal])
 
    const submitForm = async (
       e: React.FormEvent,
@@ -99,45 +93,44 @@ export function useLessonForm(onSuccess?: () => void) {
       setError('')
 
       let activeDateStr: string | undefined
-      if (editingDate) {
-         const y = editingDate.getFullYear()
-         const m = String(editingDate.getMonth() + 1).padStart(2, '0')
-         const d = String(editingDate.getDate()).padStart(2, '0')
+      if (formModal.activeDate) {
+         const y = formModal.activeDate.getFullYear()
+         const m = String(formModal.activeDate.getMonth() + 1).padStart(2, '0')
+         const d = String(formModal.activeDate.getDate()).padStart(2, '0')
          activeDateStr = `${y}-${m}-${d}`
       }
 
-      const payload = selectedLesson
-         ? {
-              subject: form.subject,
-              teacherId:
-                 selectedLesson.teacherId || selectedLesson.teacher?.id || null,
-              customTeacherName: form.customTeacherName || null,
-              teacherByDay: form.teacherByDay,
-              timeByDay: form.timeByDay,
-              color: form.color,
-              daysOfWeek: form.daysOfWeek,
-              totalLessons: form.totalLessons
-                 ? Number(form.totalLessons)
-                 : null,
-              teacherScope,
-              activeDate: activeDateStr,
-           }
-         : {
-              ...form,
-              totalLessons: form.totalLessons
-                 ? Number(form.totalLessons)
-                 : null,
-              isRecurring: mode === 'weekly',
-           }
-
       try {
-         if (selectedLesson) {
-            await scheduleApi.updateLesson(selectedLesson.id, payload)
+         if (formModal.isEdit && formModal.lesson) {
+            const payload = {
+               subject: form.subject,
+               teacherId:
+                  formModal.lesson.teacherId ||
+                  formModal.lesson.teacher?.id ||
+                  null,
+               customTeacherName: form.customTeacherName || null,
+               teacherByDay: form.teacherByDay,
+               timeByDay: form.timeByDay,
+               color: form.color,
+               daysOfWeek: form.daysOfWeek,
+               totalLessons: form.totalLessons
+                  ? Number(form.totalLessons)
+                  : null,
+               teacherScope,
+               activeDate: activeDateStr,
+            }
+            await updateLesson({ id: formModal.lesson.id, payload })
          } else {
-            await scheduleApi.createLesson(payload)
+            const payload = {
+               ...form,
+               totalLessons: form.totalLessons
+                  ? Number(form.totalLessons)
+                  : null,
+               isRecurring: mode === 'weekly',
+            }
+            await createLesson(payload)
          }
          closeForm()
-         onSuccess?.()
       } catch (err) {
          setError(
             err instanceof Error ? err.message : 'Не удалось сохранить занятие',
@@ -146,16 +139,14 @@ export function useLessonForm(onSuccess?: () => void) {
    }
 
    return {
-      isOpen,
-      selectedLesson,
-      initialTeacherName,
+      isOpen: formModal.isOpen,
+      isEdit: formModal.isEdit,
       mode,
       setMode,
       form,
       setForm,
+      initialTeacherName,
       error,
-      openCreate,
-      openEdit,
       closeForm,
       submitForm,
    }

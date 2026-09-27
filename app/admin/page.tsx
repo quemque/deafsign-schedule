@@ -6,6 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader'
 import { UsersTable } from '@/components/admin/UsersTable'
 import { UsersMobileList } from '@/components/admin/UsersMobileList'
 import { UserFormModal } from '@/components/admin/UserFormModal'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 export default function AdminPage() {
    const {
@@ -45,9 +46,7 @@ export default function AdminPage() {
             </div>
 
             {loading ? (
-               <div className="text-center py-12 text-xs sm:text-sm text-[#8B857D]">
-                  Загрузка...
-               </div>
+               <LoadingState variant="full" />
             ) : (
                <>
                   <UsersMobileList

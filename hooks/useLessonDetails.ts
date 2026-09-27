@@ -1,11 +1,16 @@
+'use client'
+
 import { useState } from 'react'
 import type { ApiLesson, DeleteLessonMode } from '@/types/schedule'
-import { scheduleApi } from '@/services/scheduleApi'
+import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 
-export function useLessonDetails(onUpdate?: () => void) {
+export function useLessonDetails(onSuccess?: () => void) {
    const [activeLesson, setActiveLesson] = useState<ApiLesson | null>(null)
    const [selectedDate, setSelectedDate] = useState<Date>(new Date())
    const [commentText, setCommentText] = useState('')
+
+   const { saveComment: mutateComment, deleteLesson: mutateDelete } =
+      useScheduleMutations()
 
    const openDetails = (lesson: ApiLesson, dayDate: Date) => {
       setActiveLesson(lesson)
@@ -13,8 +18,14 @@ export function useLessonDetails(onUpdate?: () => void) {
 
       const dateStr = dayDate.toISOString().split('T')[0]
       const currentComment =
-         lesson.comments?.find((c: any) => c.date?.startsWith(dateStr))?.text ||
-         ''
+         lesson.comments?.find((c) => {
+            const commentDate =
+               typeof c.date === 'string'
+                  ? c.date
+                  : new Date(c.date).toISOString()
+            return commentDate.startsWith(dateStr)
+         })?.text || ''
+
       setCommentText(currentComment)
    }
 
@@ -26,38 +37,37 @@ export function useLessonDetails(onUpdate?: () => void) {
    const saveComment = async () => {
       if (!activeLesson) return
 
+      const yyyy = selectedDate.getFullYear()
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const dd = String(selectedDate.getDate()).padStart(2, '0')
+      const targetDate = `${yyyy}-${mm}-${dd}`
+
       try {
-         const yyyy = selectedDate.getFullYear()
-         const mm = String(selectedDate.getMonth() + 1).padStart(2, '0')
-         const dd = String(selectedDate.getDate()).padStart(2, '0')
-         const targetDate = `${yyyy}-${mm}-${dd}`
-
-         const res = await fetch(`/api/schedule/${activeLesson.id}/comment`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               text: commentText,
-               date: targetDate,
-            }),
+         await mutateComment({
+            lessonId: activeLesson.id,
+            date: targetDate,
+            text: commentText,
          })
-
-         if (res.ok) {
-            onUpdate?.()
-            closeDetails()
-         }
+         onSuccess?.()
+         closeDetails()
       } catch (err) {
-         console.error('Ошибка сохранения комментария:', err)
+         console.error(err)
       }
    }
 
    const deleteActiveLesson = async (mode: DeleteLessonMode = 'all') => {
       if (!activeLesson) return
+
       try {
-         await scheduleApi.deleteLesson(activeLesson.id, mode, selectedDate)
+         await mutateDelete({
+            id: activeLesson.id,
+            mode,
+            date: selectedDate,
+         })
          closeDetails()
-         onUpdate?.()
+         onSuccess?.()
       } catch (err) {
-         console.error('Ошибка удаления занятия:', err)
+         console.error(err)
       }
    }
 

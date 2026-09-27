@@ -1,33 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import { useModalStore } from '@/stores/useModalStore'
+import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 
-interface RescheduleModalProps {
-   isOpen: boolean
-   lessonId: string
-   dateKey: string
-   initialStartTime: string
-   initialEndTime: string
-   onClose: () => void
-   onSuccess: () => void
-}
+export function RescheduleModal() {
+   const { rescheduleModal, closeReschedule, closeDetails } = useModalStore()
+   const { rescheduleLesson } = useScheduleMutations()
 
-export function RescheduleModal({
-   isOpen,
-   lessonId,
-   dateKey,
-   initialStartTime,
-   initialEndTime,
-   onClose,
-   onSuccess,
-}: RescheduleModalProps) {
+   const { isOpen, lessonId, dateKey, initialStartTime, initialEndTime } =
+      rescheduleModal
+
    const [rescheduleDate, setRescheduleDate] = useState(dateKey)
    const [startTime, setStartTime] = useState(initialStartTime)
    const [endTime, setEndTime] = useState(initialEndTime)
    const [error, setError] = useState('')
    const [isSubmitting, setIsSubmitting] = useState(false)
 
-   if (!isOpen) return null
+   if (!isOpen || !lessonId) return null
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault()
@@ -35,27 +25,21 @@ export function RescheduleModal({
       setIsSubmitting(true)
 
       try {
-         const res = await fetch(`/api/schedule/${lessonId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               action: 'reschedule',
+         await rescheduleLesson({
+            id: lessonId,
+            payload: {
                originalDate: dateKey,
                newDate: rescheduleDate,
                newStartTime: startTime,
                newEndTime: endTime,
-            }),
+            },
          })
-
-         if (!res.ok) {
-            const data = await res.json().catch(() => null)
-            throw new Error(data?.error || 'Ошибка при переносе')
-         }
-
-         onSuccess()
-         onClose()
-      } catch (err: any) {
-         setError(err.message || 'Ошибка переноса')
+         closeReschedule()
+         closeDetails()
+      } catch (err: unknown) {
+         setError(
+            err instanceof Error ? err.message : 'Ошибка при переносе занятия',
+         )
       } finally {
          setIsSubmitting(false)
       }
@@ -123,7 +107,7 @@ export function RescheduleModal({
                   <button
                      type="button"
                      disabled={isSubmitting}
-                     onClick={onClose}
+                     onClick={closeReschedule}
                      className="flex-1 py-2 text-xs font-semibold rounded-xl bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] transition-colors"
                   >
                      Отмена

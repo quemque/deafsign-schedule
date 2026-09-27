@@ -10,6 +10,7 @@ import {
    resolveLessonComment,
    resolveLessonTeacher,
 } from '@/utils/lesson'
+import { useModalStore } from '@/stores/useModalStore'
 import { TeacherName } from './TeacherName'
 
 interface LessonCardProps {
@@ -21,7 +22,7 @@ interface LessonCardProps {
    endsAtDate?: Date
    column?: number
    totalColumns?: number
-   onClick: () => void
+   onClick?: () => void
 }
 
 interface LessonBadgesProps {
@@ -92,6 +93,8 @@ export function LessonCard({
    totalColumns = 1,
    onClick,
 }: LessonCardProps) {
+   const openDetails = useModalStore((state) => state.openDetails)
+
    const activeStartsAt = startsAtDate || new Date(lesson.startsAt)
    const activeEndsAt = endsAtDate || new Date(lesson.endsAt)
 
@@ -112,9 +115,17 @@ export function LessonCard({
    const lessonIndex = getLessonIndex(lesson, dayDate)
    const baseColor = lesson.color || '#8BA888'
 
+   const handleClick = () => {
+      if (onClick) {
+         onClick()
+         return
+      }
+      openDetails(lesson, dayDate)
+   }
+
    return (
       <div
-         onClick={onClick}
+         onClick={handleClick}
          style={{
             top: `${layout.topPx}px`,
             height: `${layout.heightPx}px`,

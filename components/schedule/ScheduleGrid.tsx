@@ -9,6 +9,8 @@ import { getLessonRescheduleTarget, isLessonActiveOnDate } from '@/utils/date'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useScheduleSwipe } from '@/hooks/useScheduleSwipe'
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation'
+import { useScheduleStore } from '@/stores/useScheduleStore'
+import { useModalStore } from '@/stores/useModalStore'
 import {
    DayItem,
    calculateScheduleTimeBounds,
@@ -17,17 +19,8 @@ import {
 
 interface ScheduleGridProps {
    weekDates: DayItem[]
-   currentDate: Date
    currentTime: Date
    visibleLessons: ApiLesson[]
-   mobileViewMode?: 'day' | 'week'
-   isModalOpen?: boolean
-   onSelectDate: (date: Date) => void
-   onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
-   onPrevDay?: () => void
-   onNextDay?: () => void
-   onPrevWeek: () => void
-   onNextWeek: () => void
 }
 
 interface CurrentTimeIndicatorProps {
@@ -47,7 +40,6 @@ interface DayColumnProps {
    startHour: number
    nowPosition: number
    visibleLessons: ApiLesson[]
-   onSelectLesson: (lesson: ApiLesson, dayDate: Date) => void
 }
 
 function CurrentTimeIndicator({ position }: CurrentTimeIndicatorProps) {
@@ -86,7 +78,6 @@ function DayColumn({
    startHour,
    nowPosition,
    visibleLessons,
-   onSelectLesson,
 }: DayColumnProps) {
    const totalHeight = timeSlots.length * hourHeight
    const isNowVisible = nowPosition >= 0 && nowPosition <= totalHeight
@@ -141,7 +132,6 @@ function DayColumn({
                endsAtDate={item.endsAt}
                column={item.column}
                totalColumns={item.totalColumns}
-               onClick={() => onSelectLesson(item.lesson, day.dateObj)}
             />
          ))}
       </div>
@@ -150,41 +140,28 @@ function DayColumn({
 
 export function ScheduleGrid({
    weekDates,
-   currentDate,
    currentTime,
    visibleLessons,
-   mobileViewMode = 'day',
-   isModalOpen = false,
-   onSelectDate,
-   onSelectLesson,
-   onPrevDay,
-   onNextDay,
-   onPrevWeek,
-   onNextWeek,
 }: ScheduleGridProps) {
    const isMobile = useIsMobile()
    const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
-   const handlePrev = () => {
-      if (onPrevDay) return onPrevDay()
-      const prev = new Date(currentDate)
-      prev.setDate(prev.getDate() - 1)
-      onSelectDate(prev)
-   }
+   const currentDate = useScheduleStore((state) => state.currentDate)
+   const setCurrentDate = useScheduleStore((state) => state.setCurrentDate)
+   const mobileViewMode = useScheduleStore((state) => state.mobileViewMode)
+   const prevWeek = useScheduleStore((state) => state.prevWeek)
+   const nextWeek = useScheduleStore((state) => state.nextWeek)
+   const prevDay = useScheduleStore((state) => state.prevDay)
+   const nextDay = useScheduleStore((state) => state.nextDay)
 
-   const handleNext = () => {
-      if (onNextDay) return onNextDay()
-      const next = new Date(currentDate)
-      next.setDate(next.getDate() + 1)
-      onSelectDate(next)
-   }
+   const isAnyModalOpen = useModalStore((state) => state.isAnyModalOpen())
 
    const isDayMode = isMobile && mobileViewMode === 'day'
 
    useKeyboardNavigation({
-      enabled: !isModalOpen,
-      onPrev: isDayMode ? handlePrev : onPrevWeek,
-      onNext: isDayMode ? handleNext : onNextWeek,
+      enabled: !isAnyModalOpen,
+      onPrev: isDayMode ? prevDay : prevWeek,
+      onNext: isDayMode ? nextDay : nextWeek,
    })
 
    const { handleTouchStart, handleTouchEnd, handleTouchCancel } =
@@ -192,10 +169,10 @@ export function ScheduleGrid({
          containerRef: scrollContainerRef,
          isMobile,
          isDayMode,
-         onPrevDay: handlePrev,
-         onNextDay: handleNext,
-         onPrevWeek,
-         onNextWeek,
+         onPrevDay: prevDay,
+         onNextDay: nextDay,
+         onPrevWeek: prevWeek,
+         onNextWeek: nextWeek,
       })
 
    const hourHeight = isMobile ? 44 : 56
@@ -258,7 +235,7 @@ export function ScheduleGrid({
                      return (
                         <div
                            key={day.key}
-                           onClick={() => onSelectDate(day.dateObj)}
+                           onClick={() => setCurrentDate(day.dateObj)}
                            className={`py-1 sm:py-1.5 px-0.5 sm:px-1 border-r border-[#E5E0D8] last:border-r-0 flex-col items-center justify-center cursor-pointer transition-colors ${
                               isVisible ? 'flex' : 'hidden sm:flex'
                            } ${day.isToday ? 'bg-[#E8F0E8]/60' : 'hover:bg-[#F5F2ED]/40'}`}
@@ -302,7 +279,6 @@ export function ScheduleGrid({
                            startHour={startHour}
                            nowPosition={nowPosition}
                            visibleLessons={visibleLessons}
-                           onSelectLesson={onSelectLesson}
                         />
                      )
                   })}

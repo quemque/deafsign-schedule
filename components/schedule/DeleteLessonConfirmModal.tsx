@@ -1,17 +1,10 @@
 'use client'
 
 import { AlertTriangle, X } from 'lucide-react'
-
 import type { DeleteLessonMode } from '@/types/schedule'
 import { formatDayMonth } from '@/utils/date'
-
-interface DeleteLessonConfirmModalProps {
-   isOpen: boolean
-   isRecurring: boolean
-   date: Date
-   onClose: () => void
-   onConfirm: (mode: DeleteLessonMode) => void
-}
+import { useModalStore } from '@/stores/useModalStore'
+import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 
 interface ModalHeaderProps {
    onClose: () => void
@@ -126,38 +119,44 @@ function CancelButton({ onClick }: CancelButtonProps) {
    )
 }
 
-export function DeleteLessonConfirmModal({
-   isOpen,
-   isRecurring,
-   date,
-   onClose,
-   onConfirm,
-}: DeleteLessonConfirmModalProps) {
-   if (!isOpen) return null
+export function DeleteLessonConfirmModal() {
+   const { deleteConfirmModal, closeDeleteConfirm, closeDetails } =
+      useModalStore()
+   const { deleteLesson } = useScheduleMutations()
+
+   const { isOpen, lesson, date } = deleteConfirmModal
+
+   if (!isOpen || !lesson || !date) return null
 
    const formattedDate = formatDayMonth(date)
+
+   const handleConfirm = async (mode: DeleteLessonMode) => {
+      closeDeleteConfirm()
+      closeDetails()
+      await deleteLesson({ id: lesson.id, mode, date })
+   }
 
    return (
       <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-[#2C2824]/50 backdrop-blur-xs animate-in fade-in">
          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-[#E5E0D8] shadow-2xl relative">
-            <ModalHeader onClose={onClose} />
+            <ModalHeader onClose={closeDeleteConfirm} />
 
             <ModalDescription
-               isRecurring={isRecurring}
+               isRecurring={lesson.isRecurring}
                formattedDate={formattedDate}
             />
 
             <div className="flex flex-col gap-2">
-               {isRecurring ? (
+               {lesson.isRecurring ? (
                   <RecurringActions
                      formattedDate={formattedDate}
-                     onConfirm={onConfirm}
+                     onConfirm={handleConfirm}
                   />
                ) : (
-                  <SingleAction onConfirm={onConfirm} />
+                  <SingleAction onConfirm={handleConfirm} />
                )}
 
-               <CancelButton onClick={onClose} />
+               <CancelButton onClick={closeDeleteConfirm} />
             </div>
          </div>
       </div>

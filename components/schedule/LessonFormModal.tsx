@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { DAYS_OF_WEEK } from '@/constants/schedule'
-import type { FormDataState } from '@/types/schedule'
 import { ColorPicker } from './ColorPicker'
 import { DayOverridesList } from './DayOverridesList'
 import { TeacherScopeModal } from './TeacherScopeModal'
 import { MainTeacherFields } from './MainTeacherFields'
+import { useLessonForm } from '@/hooks/useLessonForm'
 import {
    addDayTeacher,
    addMainTeacher,
@@ -19,18 +19,6 @@ import {
    updateFormDate,
    updateMainTeacher,
 } from '@/utils/lessonForm'
-
-interface LessonFormModalProps {
-   isEdit: boolean
-   mode: 'once' | 'weekly'
-   form: FormDataState
-   error: string
-   initialTeacherName?: string
-   onModeChange: (mode: 'once' | 'weekly') => void
-   onFormChange: (form: FormDataState) => void
-   onClose: () => void
-   onSubmit: (e: React.FormEvent, teacherScope?: 'this' | 'all') => void
-}
 
 interface ModeSelectorProps {
    mode: 'once' | 'weekly'
@@ -65,18 +53,24 @@ function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
    )
 }
 
-export function LessonFormModal({
-   isEdit,
-   mode,
-   form,
-   error,
-   initialTeacherName = '',
-   onModeChange,
-   onFormChange,
-   onClose,
-   onSubmit,
-}: LessonFormModalProps) {
+export function LessonFormModal() {
+   const {
+      isOpen,
+      isEdit,
+      mode,
+      setMode,
+      form,
+      setForm,
+      initialTeacherName,
+      error,
+      closeForm,
+      submitForm,
+   } = useLessonForm()
+
    const [showTeacherScopeModal, setShowTeacherScopeModal] = useState(false)
+
+   if (!isOpen) return null
+
    const isRecurringMode = mode === 'weekly' || isEdit
 
    const handleFormSubmit = (e: React.FormEvent) => {
@@ -91,12 +85,12 @@ export function LessonFormModal({
          return
       }
 
-      onSubmit(e, 'all')
+      submitForm(e, 'all')
    }
 
    const handleScopeConfirm = (scope: 'this' | 'all') => {
       setShowTeacherScopeModal(false)
-      onSubmit({ preventDefault: () => {} } as React.FormEvent, scope)
+      submitForm({ preventDefault: () => {} } as React.FormEvent, scope)
    }
 
    return (
@@ -109,7 +103,7 @@ export function LessonFormModal({
                   </h3>
                   <button
                      type="button"
-                     onClick={onClose}
+                     onClick={closeForm}
                      className="p-1.5 rounded-lg hover:bg-[#F5F2ED] transition-colors text-[#8B857D]"
                      aria-label="Закрыть"
                   >
@@ -119,7 +113,7 @@ export function LessonFormModal({
 
                <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
                   {!isEdit && (
-                     <ModeSelector mode={mode} onModeChange={onModeChange} />
+                     <ModeSelector mode={mode} onModeChange={setMode} />
                   )}
 
                   <form
@@ -129,7 +123,7 @@ export function LessonFormModal({
                   >
                      <ColorPicker
                         selectedColor={form.color}
-                        onChange={(color) => onFormChange({ ...form, color })}
+                        onChange={(color) => setForm({ ...form, color })}
                      />
 
                      <div>
@@ -141,7 +135,7 @@ export function LessonFormModal({
                            placeholder="Например: Основы жестового языка"
                            value={form.subject}
                            onChange={(e) =>
-                              onFormChange({ ...form, subject: e.target.value })
+                              setForm({ ...form, subject: e.target.value })
                            }
                            required
                            className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
@@ -150,12 +144,12 @@ export function LessonFormModal({
 
                      <MainTeacherFields
                         customTeacherName={form.customTeacherName}
-                        onAdd={() => onFormChange(addMainTeacher(form))}
+                        onAdd={() => setForm(addMainTeacher(form))}
                         onUpdate={(index, value) =>
-                           onFormChange(updateMainTeacher(form, index, value))
+                           setForm(updateMainTeacher(form, index, value))
                         }
                         onRemove={(index) =>
-                           onFormChange(removeMainTeacher(form, index))
+                           setForm(removeMainTeacher(form, index))
                         }
                      />
 
@@ -170,7 +164,7 @@ export function LessonFormModal({
                               placeholder="Например: 25 (пусто = бессрочно)"
                               value={form.totalLessons}
                               onChange={(e) =>
-                                 onFormChange({
+                                 setForm({
                                     ...form,
                                     totalLessons: e.target.value,
                                  })
@@ -191,9 +185,7 @@ export function LessonFormModal({
                               type="date"
                               value={form.date}
                               onChange={(e) =>
-                                 onFormChange(
-                                    updateFormDate(form, e.target.value),
-                                 )
+                                 setForm(updateFormDate(form, e.target.value))
                               }
                               required
                               className="w-full bg-[#F5F2ED]/70 focus:bg-white border border-[#E5E0D8] focus:border-[#8BA888] focus:outline-none transition-colors rounded-xl px-4 py-2 sm:py-2.5 text-[11px] sm:text-sm"
@@ -217,7 +209,7 @@ export function LessonFormModal({
                                        key={day.key}
                                        type="button"
                                        onClick={() =>
-                                          onFormChange(
+                                          setForm(
                                              toggleFormDayOfWeek(form, day.key),
                                           )
                                        }
@@ -246,7 +238,7 @@ export function LessonFormModal({
                               type="time"
                               value={form.startTime}
                               onChange={(e) =>
-                                 onFormChange({
+                                 setForm({
                                     ...form,
                                     startTime: e.target.value,
                                  })
@@ -266,7 +258,7 @@ export function LessonFormModal({
                               type="time"
                               value={form.endTime}
                               onChange={(e) =>
-                                 onFormChange({
+                                 setForm({
                                     ...form,
                                     endTime: e.target.value,
                                  })
@@ -282,22 +274,18 @@ export function LessonFormModal({
                            daysOfWeek={form.daysOfWeek || []}
                            form={form}
                            onAddTeacher={(dayKey) =>
-                              onFormChange(addDayTeacher(form, dayKey))
+                              setForm(addDayTeacher(form, dayKey))
                            }
                            onUpdateTeacher={(dayKey, index, value) =>
-                              onFormChange(
+                              setForm(
                                  updateDayTeacher(form, dayKey, index, value),
                               )
                            }
                            onRemoveTeacher={(dayKey, index) =>
-                              onFormChange(
-                                 removeDayTeacher(form, dayKey, index),
-                              )
+                              setForm(removeDayTeacher(form, dayKey, index))
                            }
                            onTimeChange={(dayKey, field, value) =>
-                              onFormChange(
-                                 updateDayTime(form, dayKey, field, value),
-                              )
+                              setForm(updateDayTime(form, dayKey, field, value))
                            }
                         />
                      )}
@@ -313,7 +301,7 @@ export function LessonFormModal({
                <div className="p-4 sm:p-6 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex gap-3">
                   <button
                      type="button"
-                     onClick={onClose}
+                     onClick={closeForm}
                      className="flex-1 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] transition-colors rounded-xl"
                   >
                      Отмена
