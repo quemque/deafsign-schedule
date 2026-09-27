@@ -19,9 +19,16 @@ export async function GET(req: NextRequest) {
       const { startDate, endDate } = parsed.data
       const whereClause: Prisma.LessonWhereInput = {}
 
+      let dateFilter: { gte: Date; lte: Date } | undefined
+
       if (startDate && endDate) {
          const rangeStart = new Date(startDate)
+         rangeStart.setUTCHours(0, 0, 0, 0)
+
          const rangeEnd = new Date(endDate)
+         rangeEnd.setUTCHours(23, 59, 59, 999)
+
+         dateFilter = { gte: rangeStart, lte: rangeEnd }
 
          whereClause.OR = [
             {
@@ -49,16 +56,33 @@ export async function GET(req: NextRequest) {
          ]
       }
 
+      const relationsInclude: Prisma.LessonInclude = dateFilter
+         ? {
+              teacher: { select: { id: true, name: true } },
+              comments: { where: { date: dateFilter } },
+              cancellations: { where: { date: dateFilter } },
+              overrides: { where: { date: dateFilter } },
+              reschedules: {
+                 where: {
+                    OR: [
+                       { originalDate: dateFilter },
+                       { newStartsAt: dateFilter },
+                    ],
+                 },
+              },
+           }
+         : {
+              teacher: { select: { id: true, name: true } },
+              comments: true,
+              cancellations: true,
+              overrides: true,
+              reschedules: true,
+           }
+
       const lessons = await prisma.lesson.findMany({
          where: whereClause,
          orderBy: { startsAt: 'asc' },
-         include: {
-            teacher: { select: { id: true, name: true } },
-            comments: true,
-            cancellations: true,
-            overrides: true,
-            reschedules: true,
-         },
+         include: relationsInclude,
       })
 
       return NextResponse.json({ lessons })

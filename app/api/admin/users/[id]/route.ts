@@ -7,7 +7,7 @@ import { Prisma } from '@prisma/client'
 
 export const PATCH = withAuth<{ id: string }>(
    ['ADMIN'],
-   async (req, { params }) => {
+   async (req, { params, user: adminUser }) => {
       const { id } = params
 
       const parsed = await parseJsonBody(req, updateUserSchema)
@@ -50,17 +50,31 @@ export const PATCH = withAuth<{ id: string }>(
             updateData.passwordHash = await hashPassword(body.password)
          }
 
-         const updatedUser = await prisma.user.update({
-            where: { id },
-            data: updateData,
-            select: {
-               id: true,
-               email: true,
-               login: true,
-               name: true,
-               role: true,
-               isActive: true,
-            },
+         const updatedUser = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.update({
+               where: { id },
+               data: updateData,
+               select: {
+                  id: true,
+                  email: true,
+                  login: true,
+                  name: true,
+                  role: true,
+                  isActive: true,
+               },
+            })
+
+            await tx.auditLog.create({
+               data: {
+                  action: 'update',
+                  entity: 'user',
+                  entityId: id,
+                  userId: adminUser.id,
+                  metadata: Object.keys(updateData),
+               },
+            })
+
+            return user
          })
 
          return NextResponse.json({ user: updatedUser })
@@ -83,9 +97,20 @@ export const DELETE = withAuth<{ id: string }>(
          )
       }
 
-      await prisma.user.update({
-         where: { id },
-         data: { isActive: false },
+      await prisma.$transaction(async (tx) => {
+         await tx.user.update({
+            where: { id },
+            data: { isActive: false },
+         })
+
+         await tx.auditLog.create({
+            data: {
+               action: 'deactivate',
+               entity: 'user',
+               entityId: id,
+               userId: adminUser.id,
+            },
+         })
       })
 
       return NextResponse.json({ success: true })

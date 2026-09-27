@@ -44,31 +44,35 @@ export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
 
       const passwordHash = await hashPassword(password)
 
-      const newUser = await prisma.user.create({
-         data: {
-            email,
-            login,
-            passwordHash,
-            name,
-            role,
-         },
-         select: {
-            id: true,
-            email: true,
-            login: true,
-            name: true,
-            role: true,
-         },
-      })
+      const newUser = await prisma.$transaction(async (tx) => {
+         const user = await tx.user.create({
+            data: {
+               email,
+               login,
+               passwordHash,
+               name,
+               role,
+            },
+            select: {
+               id: true,
+               email: true,
+               login: true,
+               name: true,
+               role: true,
+            },
+         })
 
-      await prisma.auditLog.create({
-         data: {
-            action: 'create',
-            entity: 'user',
-            entityId: newUser.id,
-            userId: adminUser.id,
-            metadata: { role: newUser.role },
-         },
+         await tx.auditLog.create({
+            data: {
+               action: 'create',
+               entity: 'user',
+               entityId: user.id,
+               userId: adminUser.id,
+               metadata: { role: user.role },
+            },
+         })
+
+         return user
       })
 
       return NextResponse.json({ user: newUser }, { status: 201 })
