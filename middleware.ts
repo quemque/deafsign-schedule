@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose/jwt/verify'
 
 const JWT_SECRET = new TextEncoder().encode(
-   process.env.JWT_SECRET || 'your-super-secret-key-change-in-production',
+   process.env.JWT_SECRET || 'secret-key',
 )
 
 const PUBLIC_PATHS = ['/login', '/register']

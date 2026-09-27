@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { DayOfWeek } from '@prisma/client'
+import { DayOfWeek, Prisma } from '@prisma/client'
 
 export async function PATCH(
    req: NextRequest,
@@ -10,23 +10,11 @@ export async function PATCH(
    const { id } = await params
 
    const user = await getCurrentUser()
-   if (!user || (user.role !== 'ADMIN' && user.role !== 'TEACHER')) {
+   if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
    }
 
    const body = await req.json()
-
-   if (user.role === 'TEACHER') {
-      const lesson = await prisma.lesson.findUnique({
-         where: { id },
-         include: {
-            teacher: { select: { id: true, name: true } },
-            overrides: true,
-            reschedules: true,
-         },
-      })
-      return NextResponse.json({ lesson })
-   }
 
    if (body.action === 'reschedule') {
       const { originalDate, newDate, newStartTime, newEndTime } = body
@@ -96,14 +84,10 @@ export async function PATCH(
          create: {
             lessonId: id,
             date: targetDate,
-            customTeacherName: data.customTeacherName
-               ? data.customTeacherName.trim()
-               : null,
+            customTeacherName: data.customTeacherName?.trim() || null,
          },
          update: {
-            customTeacherName: data.customTeacherName
-               ? data.customTeacherName.trim()
-               : null,
+            customTeacherName: data.customTeacherName?.trim() || null,
          },
       })
 
@@ -113,9 +97,13 @@ export async function PATCH(
             subject: data.subject,
             color: data.color || undefined,
             teacherByDay:
-               data.teacherByDay !== undefined ? data.teacherByDay : undefined,
+               data.teacherByDay !== undefined
+                  ? data.teacherByDay || Prisma.DbNull
+                  : undefined,
             timeByDay:
-               data.timeByDay !== undefined ? data.timeByDay : undefined,
+               data.timeByDay !== undefined
+                  ? data.timeByDay || Prisma.DbNull
+                  : undefined,
             daysOfWeek:
                data.daysOfWeek && data.daysOfWeek.length > 0
                   ? (data.daysOfWeek as DayOfWeek[])
@@ -148,12 +136,15 @@ export async function PATCH(
       data: {
          subject: data.subject,
          teacherId: data.teacherId || null,
-         customTeacherName: data.customTeacherName
-            ? data.customTeacherName.trim()
-            : null,
+         customTeacherName: data.customTeacherName?.trim() || null,
          teacherByDay:
-            data.teacherByDay !== undefined ? data.teacherByDay : undefined,
-         timeByDay: data.timeByDay !== undefined ? data.timeByDay : undefined,
+            data.teacherByDay !== undefined
+               ? data.teacherByDay || Prisma.DbNull
+               : undefined,
+         timeByDay:
+            data.timeByDay !== undefined
+               ? data.timeByDay || Prisma.DbNull
+               : undefined,
          color: data.color || undefined,
          daysOfWeek:
             data.daysOfWeek && data.daysOfWeek.length > 0

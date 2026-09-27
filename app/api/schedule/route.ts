@@ -3,11 +3,48 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { DayOfWeek } from '@prisma/client'
+import { DayOfWeek, Prisma } from '@prisma/client'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
    try {
+      const { searchParams } = new URL(req.url)
+      const startDateParam = searchParams.get('startDate')
+      const endDateParam = searchParams.get('endDate')
+
+      const whereClause: Prisma.LessonWhereInput = {}
+
+      if (startDateParam && endDateParam) {
+         const rangeStart = new Date(startDateParam)
+         const rangeEnd = new Date(endDateParam)
+
+         whereClause.OR = [
+            {
+               isRecurring: true,
+               startsAt: { lte: rangeEnd },
+               OR: [{ endDate: null }, { endDate: { gte: rangeStart } }],
+            },
+            {
+               isRecurring: false,
+               startsAt: {
+                  gte: rangeStart,
+                  lte: rangeEnd,
+               },
+            },
+            {
+               reschedules: {
+                  some: {
+                     newStartsAt: {
+                        gte: rangeStart,
+                        lte: rangeEnd,
+                     },
+                  },
+               },
+            },
+         ]
+      }
+
       const lessons = await prisma.lesson.findMany({
+         where: whereClause,
          orderBy: { startsAt: 'asc' },
          include: {
             teacher: { select: { id: true, name: true } },
@@ -17,8 +54,10 @@ export async function GET() {
             reschedules: true,
          },
       })
+
       return NextResponse.json({ lessons })
    } catch (error) {
+      console.error('[SCHEDULE_GET_ERROR]', error)
       return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
    }
 }
@@ -50,9 +89,9 @@ export async function POST(req: NextRequest) {
          endsAt: rawEndsAt,
       } = body
 
-      if (!subject) {
+      if (!subject?.trim()) {
          return NextResponse.json(
-            { error: 'Заполните предмет' },
+            { error: 'Заполните название предмета' },
             { status: 400 },
          )
       }
@@ -119,20 +158,18 @@ export async function POST(req: NextRequest) {
          endsAt = new Date(Date.UTC(y, m - 1, d, eh, em, 0, 0))
       } else {
          return NextResponse.json(
-            { error: 'Укажите дату и время' },
+            { error: 'Укажите дату и время занятия' },
             { status: 400 },
          )
       }
 
       const lesson = await prisma.lesson.create({
          data: {
-            subject,
+            subject: subject.trim(),
             teacherId: teacherId || null,
-            customTeacherName: customTeacherName
-               ? customTeacherName.trim()
-               : null,
-            teacherByDay: teacherByDay || null,
-            timeByDay: timeByDay || null,
+            customTeacherName: customTeacherName?.trim() || null,
+            teacherByDay: teacherByDay || Prisma.DbNull,
+            timeByDay: timeByDay || Prisma.DbNull,
             room: null,
             color: color || '#8BA888',
             totalLessons:
@@ -153,9 +190,9 @@ export async function POST(req: NextRequest) {
          },
       })
 
-      return NextResponse.json({ lesson })
+      return NextResponse.json({ lesson }, { status: 201 })
    } catch (error) {
-      console.error(error)
+      console.error('[SCHEDULE_POST_ERROR]', error)
       return NextResponse.json(
          { error: 'Ошибка при создании занятия' },
          { status: 500 },

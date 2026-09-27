@@ -17,12 +17,15 @@
    },
    "dependencies": {
       "@prisma/client": "^6.7.0",
+      "@tanstack/react-query": "^5.104.0",
       "bcryptjs": "^3.0.3",
       "jose": "^6.2.12",
       "lucide-react": "^1.46.0",
       "next": "^15.3.2",
       "react": "^19.0.0",
-      "react-dom": "^19.0.0"
+      "react-dom": "^19.0.0",
+      "tanstack": "^2.0.3",
+      "zustand": "^5.0.15"
    },
    "devDependencies": {
       "@tailwindcss/postcss": "^4.1.5",
