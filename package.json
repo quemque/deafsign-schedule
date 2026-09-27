@@ -5,6 +5,8 @@
    "scripts": {
       "dev": "next dev",
       "build": "prisma generate && prisma migrate deploy && next build",
+      "test": "vitest run",
+      "test:watch": "vitest",
       "start": "next start",
       "lint": "next lint",
       "db:push": "prisma db push",
@@ -25,6 +27,8 @@
       "react": "^19.0.0",
       "react-dom": "^19.0.0",
       "tanstack": "^2.0.3",
+      "vite-tsconfig-paths": "^6.1.1",
+      "vitest": "^5.0.2",
       "zod": "^4.6.5",
       "zustand": "^5.0.15"
    },
