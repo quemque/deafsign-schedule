@@ -1,29 +1,41 @@
-'use client'
-
-import { useQuery } from '@tanstack/react-query'
-import { scheduleApi } from '@/services/scheduleApi'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
+import { scheduleApi } from '@/services/scheduleApi'
 
 export function useCurrentUserQuery() {
    return useQuery({
-      queryKey: queryKeys.auth.me(),
+      queryKey: ['auth', 'user'],
       queryFn: async () => {
-         const data = await scheduleApi.getMe()
-         return data.user
+         const res = await fetch('/api/auth/me')
+         if (!res.ok) return null
+         const data = await res.json()
+         return data.user ?? null
       },
       staleTime: 1000 * 60 * 15,
    })
 }
 
-export function useScheduleLessonsQuery(range?: {
+export function useScheduleQuery(params?: {
    startDate?: string
    endDate?: string
 }) {
    return useQuery({
-      queryKey: queryKeys.schedule.list(range),
-      queryFn: async () => {
-         const data = await scheduleApi.getSchedule(range)
-         return data.lessons
-      },
+      queryKey: queryKeys.schedule.list(params),
+      queryFn: () => scheduleApi.getSchedule(params),
+      placeholderData: keepPreviousData,
+      staleTime: 1000 * 60 * 5,
+   })
+}
+
+export function useScheduleLessonsQuery(params?: {
+   startDate?: string
+   endDate?: string
+}) {
+   return useQuery({
+      queryKey: queryKeys.schedule.list(params),
+      queryFn: () => scheduleApi.getSchedule(params),
+      select: (data) => data?.lessons ?? [],
+      placeholderData: keepPreviousData,
+      staleTime: 1000 * 60 * 5,
    })
 }

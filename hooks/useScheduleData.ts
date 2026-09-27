@@ -7,6 +7,7 @@ import {
    useCurrentUserQuery,
    useScheduleLessonsQuery,
 } from '@/hooks/useScheduleQueries'
+import { scheduleApi } from '@/services/scheduleApi'
 import { computeWeekDates, formatWeekLabel } from '@/utils/weekSchedule'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -42,8 +43,42 @@ export function useScheduleData() {
    }, [weekDates])
 
    const { data: user, isLoading: isUserLoading } = useCurrentUserQuery()
-   const { data: lessons = [], isLoading: isLessonsLoading } =
-      useScheduleLessonsQuery(dateRange)
+
+   const {
+      data: lessons = [],
+      isPending: isLessonsPending,
+      isFetching: isLessonsFetching,
+   } = useScheduleLessonsQuery(dateRange)
+
+   useEffect(() => {
+      const prevDate = new Date(currentDate)
+      prevDate.setDate(prevDate.getDate() - 7)
+      const prevWeekDays = computeWeekDates(prevDate)
+      const prevParams = {
+         startDate: prevWeekDays[0].dateObj.toISOString(),
+         endDate: prevWeekDays[prevWeekDays.length - 1].dateObj.toISOString(),
+      }
+
+      const nextDate = new Date(currentDate)
+      nextDate.setDate(nextDate.getDate() + 7)
+      const nextWeekDays = computeWeekDates(nextDate)
+      const nextParams = {
+         startDate: nextWeekDays[0].dateObj.toISOString(),
+         endDate: nextWeekDays[nextWeekDays.length - 1].dateObj.toISOString(),
+      }
+
+      queryClient.prefetchQuery({
+         queryKey: queryKeys.schedule.list(prevParams),
+         queryFn: () => scheduleApi.getSchedule(prevParams),
+         staleTime: 1000 * 60 * 5,
+      })
+
+      queryClient.prefetchQuery({
+         queryKey: queryKeys.schedule.list(nextParams),
+         queryFn: () => scheduleApi.getSchedule(nextParams),
+         staleTime: 1000 * 60 * 5,
+      })
+   }, [currentDate, queryClient])
 
    const refreshSchedule = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all })
@@ -51,7 +86,8 @@ export function useScheduleData() {
 
    return {
       user: user ?? null,
-      loading: isUserLoading || isLessonsLoading,
+      loading: isUserLoading || isLessonsPending,
+      isBackgroundUpdating: isLessonsFetching,
       currentDate,
       setCurrentDate,
       currentTime,
