@@ -1,98 +1,93 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSession, hashPassword } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { hashPassword } from '@/lib/auth'
+import { withAuth, parseJsonBody } from '@/lib/apiGuard'
+import { updateUserSchema } from '@/schemas/user.schema'
+import { Prisma } from '@prisma/client'
 
-async function requireAdmin() {
-   const session = await getSession()
-   if (!session || session.role !== 'ADMIN') return null
-   return session
-}
+export const PATCH = withAuth<{ id: string }>(
+   ['ADMIN'],
+   async (req, { params }) => {
+      const { id } = params
 
-export async function PATCH(
-   request: NextRequest,
-   { params }: { params: Promise<{ id: string }> },
-) {
-   const session = await requireAdmin()
-   if (!session) {
-      return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
-   }
+      const parsed = await parseJsonBody(req, updateUserSchema)
+      if ('errorResponse' in parsed) {
+         return parsed.errorResponse
+      }
 
-   const { id } = await params
+      const body = parsed.data
 
-   try {
-      const body = await request.json()
+      try {
+         if (body.login || body.email) {
+            const existing = await prisma.user.findFirst({
+               where: {
+                  OR: [
+                     ...(body.login ? [{ login: body.login }] : []),
+                     ...(body.email ? [{ email: body.email }] : []),
+                  ],
+                  NOT: { id },
+               },
+            })
 
-      if (body.login || body.email) {
-         const existing = await prisma.user.findFirst({
-            where: {
-               OR: [
-                  ...(body.login ? [{ login: body.login.trim() }] : []),
-                  ...(body.email ? [{ email: body.email.trim() }] : []),
-               ],
-               NOT: { id },
+            if (existing) {
+               return NextResponse.json(
+                  {
+                     error: 'Пользователь с таким логином или email уже существует',
+                  },
+                  { status: 409 },
+               )
+            }
+         }
+
+         const updateData: Prisma.UserUpdateInput = {}
+         if (body.name) updateData.name = body.name
+         if (body.login) updateData.login = body.login
+         if (body.email) updateData.email = body.email
+         if (body.role) updateData.role = body.role
+         if (typeof body.isActive === 'boolean')
+            updateData.isActive = body.isActive
+         if (body.password) {
+            updateData.passwordHash = await hashPassword(body.password)
+         }
+
+         const updatedUser = await prisma.user.update({
+            where: { id },
+            data: updateData,
+            select: {
+               id: true,
+               email: true,
+               login: true,
+               name: true,
+               role: true,
+               isActive: true,
             },
          })
 
-         if (existing) {
-            return NextResponse.json(
-               {
-                  error: 'Пользователь с таким логином или email уже существует',
-               },
-               { status: 409 },
-            )
-         }
+         return NextResponse.json({ user: updatedUser })
+      } catch (error) {
+         console.error(error)
+         return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
+      }
+   },
+)
+
+export const DELETE = withAuth<{ id: string }>(
+   ['ADMIN'],
+   async (_req, { user: adminUser, params }) => {
+      const { id } = params
+
+      if (id === adminUser.id) {
+         return NextResponse.json(
+            { error: 'Нельзя отключить свой собственный аккаунт' },
+            { status: 400 },
+         )
       }
 
-      const data: any = {}
-      if (body.name) data.name = body.name.trim()
-      if (body.login) data.login = body.login.trim()
-      if (body.email) data.email = body.email.trim()
-      if (body.role) data.role = body.role
-      if (typeof body.isActive === 'boolean') data.isActive = body.isActive
-      if (body.password) data.passwordHash = await hashPassword(body.password)
-
-      const user = await prisma.user.update({
+      await prisma.user.update({
          where: { id },
-         data,
-         select: {
-            id: true,
-            email: true,
-            login: true,
-            name: true,
-            role: true,
-            isActive: true,
-         },
+         data: { isActive: false },
       })
 
-      return NextResponse.json({ user })
-   } catch (error) {
-      console.error(error)
-      return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
-   }
-}
-
-export async function DELETE(
-   _request: NextRequest,
-   { params }: { params: Promise<{ id: string }> },
-) {
-   const session = await requireAdmin()
-   if (!session) {
-      return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
-   }
-
-   const { id } = await params
-
-   if (id === session.userId) {
-      return NextResponse.json(
-         { error: 'Нельзя отключить свой аккаунт' },
-         { status: 400 },
-      )
-   }
-
-   await prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-   })
-
-   return NextResponse.json({ success: true })
-}
+      return NextResponse.json({ success: true })
+   },
+)

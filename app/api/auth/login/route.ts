@@ -1,18 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyPassword, createToken, setAuthCookie } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
+import { parseJsonBody } from '@/lib/apiGuard'
+import { loginSchema } from '@/schemas/auth.schema'
+
+const authLimiter = rateLimit({
+   interval: 60 * 1000,
+   uniqueTokenPerInterval: 500,
+})
 
 export async function POST(request: NextRequest) {
+   const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      request.headers.get('x-real-ip') ||
+      'anonymous'
+
+   const limitResult = authLimiter.check(5, clientIp)
+   if (!limitResult.success) {
+      return NextResponse.json(
+         { error: 'Слишком много попыток входа. Повторите через минуту.' },
+         { status: 429 },
+      )
+   }
+
+   const parsed = await parseJsonBody(request, loginSchema)
+   if ('errorResponse' in parsed) {
+      return parsed.errorResponse
+   }
+
+   const { login, password } = parsed.data
+
    try {
-      const { login, password } = await request.json()
-
-      if (!login || !password) {
-         return NextResponse.json(
-            { error: 'Введите логин и пароль' },
-            { status: 400 },
-         )
-      }
-
       const user = await prisma.user.findFirst({
          where: {
             OR: [{ login }, { email: login }],
@@ -27,7 +46,6 @@ export async function POST(request: NextRequest) {
       }
 
       const isValid = await verifyPassword(password, user.passwordHash)
-
       if (!isValid) {
          return NextResponse.json(
             { error: 'Неверный логин или пароль' },
@@ -54,6 +72,8 @@ export async function POST(request: NextRequest) {
             entity: 'user',
             entityId: user.id,
             userId: user.id,
+            ipAddress: clientIp,
+            userAgent: request.headers.get('user-agent'),
          },
       })
 

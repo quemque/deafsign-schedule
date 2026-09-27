@@ -1,21 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSession, hashPassword } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { hashPassword } from '@/lib/auth'
+import { withAuth, parseJsonBody } from '@/lib/apiGuard'
+import { createUserSchema } from '@/schemas/user.schema'
 
-async function requireAdmin() {
-   const session = await getSession()
-   if (!session || session.role !== 'ADMIN') {
-      return null
-   }
-   return session
-}
-
-export async function GET() {
-   const session = await requireAdmin()
-   if (!session) {
-      return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
-   }
-
+export const GET = withAuth(['ADMIN'], async () => {
    const users = await prisma.user.findMany({
       select: {
          id: true,
@@ -31,24 +20,17 @@ export async function GET() {
    })
 
    return NextResponse.json({ users })
-}
+})
 
-export async function POST(request: NextRequest) {
-   const session = await requireAdmin()
-   if (!session) {
-      return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })
+export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
+   const parsed = await parseJsonBody(req, createUserSchema)
+   if ('errorResponse' in parsed) {
+      return parsed.errorResponse
    }
 
+   const { email, login, password, name, role } = parsed.data
+
    try {
-      const { email, login, password, name, role } = await request.json()
-
-      if (!email || !login || !password || !name) {
-         return NextResponse.json(
-            { error: 'Заполните все обязательные поля' },
-            { status: 400 },
-         )
-      }
-
       const existing = await prisma.user.findFirst({
          where: { OR: [{ email }, { login }] },
       })
@@ -62,13 +44,13 @@ export async function POST(request: NextRequest) {
 
       const passwordHash = await hashPassword(password)
 
-      const user = await prisma.user.create({
+      const newUser = await prisma.user.create({
          data: {
             email,
             login,
             passwordHash,
             name,
-            role: role || 'USER',
+            role,
          },
          select: {
             id: true,
@@ -83,15 +65,15 @@ export async function POST(request: NextRequest) {
          data: {
             action: 'create',
             entity: 'user',
-            entityId: user.id,
-            userId: session.userId,
-            metadata: { role: user.role },
+            entityId: newUser.id,
+            userId: adminUser.id,
+            metadata: { role: newUser.role },
          },
       })
 
-      return NextResponse.json({ user })
+      return NextResponse.json({ user: newUser }, { status: 201 })
    } catch (error) {
       console.error(error)
       return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 })
    }
-}
+})
