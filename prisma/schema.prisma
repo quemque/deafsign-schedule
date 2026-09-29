@@ -44,13 +44,14 @@ model User {
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 
-  taughtLessons  Lesson[]       @relation("TeacherLessons")
-  createdLessons Lesson[]       @relation("CreatedLessons")
+  taughtLessons  Lesson[]        @relation("TeacherLessons")
+  createdLessons Lesson[]        @relation("CreatedLessons")
   comments       Comment[]
   notes          TeacherNote[]
   notifications  Notification[]
   auditLogs      AuditLog[]
   enrollments    Enrollment[]
+  homeworks      Homework[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,9 +116,9 @@ model Lesson {
   scheduleId String?
   schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  teacher       User? @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacher       User?                @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: SetNull)
   createdBy     String?
-  createdByUser User? @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdByUser User?                @relation("CreatedLessons", fields: [createdBy], references: [id], onDelete: SetNull)
 
   comments      Comment[]
   cancellations LessonCancellation[]
@@ -126,6 +127,7 @@ model Lesson {
   notes         TeacherNote[]
   enrollments   Enrollment[]
   attendance    Attendance[]
+  homeworks     Homework[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -302,4 +304,26 @@ model AuditLog {
   @@index([entity])
   @@index([createdAt])
   @@map("audit_logs")
+}
+model Homework {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  title       String?
+  description String   @db.Text
+  videoUrl    String?
+  videoKey    String?
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lessonId, date])
+  @@index([lessonId])
+  @@index([date])
+  @@map("homeworks")
 }

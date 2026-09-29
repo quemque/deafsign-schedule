@@ -9,6 +9,8 @@ import {
    Trash2,
    MessageSquare,
    CalendarClock,
+   BookOpen,
+   Info,
 } from 'lucide-react'
 import {
    formatDateKey,
@@ -21,6 +23,9 @@ import { useModalStore } from '@/stores/useModalStore'
 import { useCurrentUserQuery } from '@/hooks/useScheduleQueries'
 import { useScheduleMutations } from '@/hooks/useScheduleMutations'
 import { TeacherName } from './TeacherName'
+import { HomeworkTab } from './HomeworkTab'
+
+type ModalTab = 'info' | 'homework' | 'note'
 
 interface HeaderProps {
    subject: string
@@ -179,7 +184,7 @@ function LessonCommentSection({
    return (
       <div>
          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#B0A89E] mb-1.5 sm:mb-2 flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5" /> Комментарий
+            <MessageSquare className="w-3.5 h-3.5" /> Заметка для преподавателей
          </h4>
 
          {canEdit ? (
@@ -187,21 +192,21 @@ function LessonCommentSection({
                <textarea
                   value={text}
                   onChange={(e) => onChange(e.target.value)}
-                  placeholder="Добавить комментарий..."
+                  placeholder="Добавить внутреннюю заметку..."
                   className="w-full bg-[#FDFCFB] border border-[#F0EDE8] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm resize-none focus:outline-none focus:border-[#8BA888]"
-                  rows={2}
+                  rows={3}
                />
                <button
                   type="button"
                   onClick={onSave}
                   className="self-end px-4 py-1.5 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] border border-[#E5E0D8] transition-colors rounded-lg"
                >
-                  Сохранить
+                  Сохранить заметку
                </button>
             </div>
          ) : (
             <p className="text-[11px] sm:text-sm text-[#5A534A] leading-relaxed bg-[#FDFCFB]/50 p-2.5 sm:p-4 rounded-xl border border-[#F0EDE8] whitespace-pre-wrap">
-               {text || 'Нет комментариев'}
+               {text || 'Нет заметок'}
             </p>
          )}
       </div>
@@ -276,6 +281,7 @@ export function LessonDetailsModal() {
 
    const { lesson, date, isOpen } = detailsModal
 
+   const [activeTab, setActiveTab] = useState<ModalTab>('info')
    const [commentText, setCommentText] = useState('')
 
    const displayDate = date || (lesson ? new Date(lesson.startsAt) : new Date())
@@ -284,12 +290,14 @@ export function LessonDetailsModal() {
       if (!lesson || !isOpen) return
       const currentComment = resolveLessonComment(lesson, displayDate)
       setCommentText(currentComment)
+      setActiveTab('info')
    }, [lesson, isOpen, displayDate])
 
    if (!isOpen || !lesson) return null
 
    const isAdmin = user?.role === 'ADMIN'
-   const canEditComment = user?.role === 'ADMIN' || user?.role === 'TEACHER'
+   const isTeacher = user?.role === 'TEACHER'
+   const canManage = isAdmin || isTeacher
 
    const dateKey = formatDateKey(displayDate)
    const teacherName = resolveLessonTeacher(lesson, displayDate)
@@ -313,7 +321,6 @@ export function LessonDetailsModal() {
          date: targetDate,
          text: commentText,
       })
-      closeDetails()
    }
 
    return (
@@ -330,20 +337,75 @@ export function LessonDetailsModal() {
                onClose={closeDetails}
             />
 
-            <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-5 overflow-y-auto custom-scrollbar flex-1">
-               <LessonInfoGrid
-                  baseColor={baseColor}
-                  startsAt={startsAt}
-                  endsAt={endsAt}
-                  teacherName={teacherName}
-               />
+            <div className="flex border-b border-[#E5E0D8] px-4 sm:px-6 bg-white gap-4 shrink-0">
+               <button
+                  type="button"
+                  onClick={() => setActiveTab('info')}
+                  className={`flex items-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                     activeTab === 'info'
+                        ? 'border-[#8BA888] text-[#3E3A35]'
+                        : 'border-transparent text-[#8B857D] hover:text-[#3E3A35]'
+                  }`}
+               >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>Информация</span>
+               </button>
 
-               <LessonCommentSection
-                  canEdit={canEditComment}
-                  text={commentText}
-                  onChange={setCommentText}
-                  onSave={handleSaveComment}
-               />
+               <button
+                  type="button"
+                  onClick={() => setActiveTab('homework')}
+                  className={`flex items-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                     activeTab === 'homework'
+                        ? 'border-[#8BA888] text-[#3E3A35]'
+                        : 'border-transparent text-[#8B857D] hover:text-[#3E3A35]'
+                  }`}
+               >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Домашнее задание</span>
+               </button>
+
+               {canManage && (
+                  <button
+                     type="button"
+                     onClick={() => setActiveTab('note')}
+                     className={`flex items-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                        activeTab === 'note'
+                           ? 'border-[#8BA888] text-[#3E3A35]'
+                           : 'border-transparent text-[#8B857D] hover:text-[#3E3A35]'
+                     }`}
+                  >
+                     <MessageSquare className="w-3.5 h-3.5" />
+                     <span>Заметка</span>
+                  </button>
+               )}
+            </div>
+
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+               {activeTab === 'info' && (
+                  <LessonInfoGrid
+                     baseColor={baseColor}
+                     startsAt={startsAt}
+                     endsAt={endsAt}
+                     teacherName={teacherName}
+                  />
+               )}
+
+               {activeTab === 'homework' && (
+                  <HomeworkTab
+                     lessonId={lesson.id}
+                     date={dateKey}
+                     canEdit={canManage}
+                  />
+               )}
+
+               {activeTab === 'note' && canManage && (
+                  <LessonCommentSection
+                     canEdit={canManage}
+                     text={commentText}
+                     onChange={setCommentText}
+                     onSave={handleSaveComment}
+                  />
+               )}
             </div>
 
             <LessonDetailsFooter

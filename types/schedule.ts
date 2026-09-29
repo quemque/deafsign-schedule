@@ -33,6 +33,23 @@ export interface LessonReschedule {
    lessonId: string
 }
 
+export interface Homework {
+   id: string
+   date: string | Date
+   title?: string | null
+   description: string
+   videoUrl?: string | null
+   videoKey?: string | null
+   lessonId: string
+   authorId: string
+   author?: {
+      id: string
+      name: string
+   }
+   createdAt: string | Date
+   updatedAt: string | Date
+}
+
 export type DeleteLessonMode = 'this' | 'future' | 'all'
 
 export interface CurrentUser {
@@ -70,6 +87,7 @@ export interface ApiLesson {
    cancellations?: LessonCancellation[]
    overrides?: LessonOverride[]
    reschedules?: LessonReschedule[]
+   homeworks?: Homework[]
 }
 
 export interface FormDataState {
