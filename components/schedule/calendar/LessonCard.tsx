@@ -12,6 +12,7 @@ import {
 } from '@/utils/lesson'
 import { useModalStore } from '@/stores/useModalStore'
 import { TeacherName } from './TeacherName'
+import { LessonBadges } from './LessonBadges'
 
 interface LessonCardProps {
    lesson: ApiLesson
@@ -23,63 +24,6 @@ interface LessonCardProps {
    column?: number
    totalColumns?: number
    onClick?: () => void
-}
-
-interface LessonBadgesProps {
-   isRescheduled: boolean
-   isRecurring: boolean
-   lessonIndex: number | null
-   totalLessons?: number | null
-   isCompact: boolean
-}
-
-interface LessonCommentProps {
-   text: string
-   isCompact: boolean
-}
-
-function LessonBadges({
-   isRescheduled,
-   isRecurring,
-   lessonIndex,
-   totalLessons,
-   isCompact,
-}: LessonBadgesProps) {
-   const rescheduleLabel = isCompact ? 'П' : 'ПЕРЕНОС'
-   const recurringLabel = totalLessons
-      ? `${lessonIndex ?? '–'}${isCompact ? '' : `/${totalLessons}`}`
-      : isCompact
-        ? '•'
-        : 'ЦИКЛ'
-
-   return (
-      <div className="flex items-center gap-0.5 sm:gap-1">
-         {isRescheduled && (
-            <span className="font-bold px-0.5 sm:px-1 py-0.2 rounded-xs bg-amber-500 text-white text-[7px] sm:text-[8px] leading-tight">
-               {rescheduleLabel}
-            </span>
-         )}
-
-         {isRecurring && (
-            <span className="font-bold px-0.5 sm:px-1 py-0.2 rounded-xs bg-white/75 text-[#3E3A35] text-[7px] sm:text-[8px] leading-tight">
-               {recurringLabel}
-            </span>
-         )}
-      </div>
-   )
-}
-
-function LessonComment({ text, isCompact }: LessonCommentProps) {
-   if (!text) return null
-
-   const iconSize = isCompact ? 'w-2 h-2' : 'w-2.5 h-2.5'
-
-   return (
-      <div className="flex items-center gap-0.5 text-[7px] sm:text-[9px] text-[#5A534A] opacity-70 italic ml-auto truncate max-w-[50%]">
-         <MessageSquare className={`${iconSize} shrink-0`} />
-         <span className="truncate">{text}</span>
-      </div>
-   )
 }
 
 export function LessonCard({
@@ -122,6 +66,8 @@ export function LessonCard({
       }
       openDetails(lesson, dayDate)
    }
+
+   const iconSize = layout.isCompact ? 'w-2 h-2' : 'w-2.5 h-2.5'
 
    return (
       <div
@@ -170,7 +116,12 @@ export function LessonCard({
                   isCompact={layout.isCompact}
                />
 
-               <LessonComment text={commentText} isCompact={layout.isCompact} />
+               {commentText && (
+                  <div className="flex items-center gap-0.5 text-[7px] sm:text-[9px] text-[#5A534A] opacity-70 italic ml-auto truncate max-w-[50%]">
+                     <MessageSquare className={`${iconSize} shrink-0`} />
+                     <span className="truncate">{commentText}</span>
+                  </div>
+               )}
             </div>
          </div>
       </div>

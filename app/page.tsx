@@ -1,13 +1,13 @@
 'use client'
 
 import { useScheduleData } from '@/hooks/useScheduleData'
-import { ScheduleHeader } from '@/components/schedule/ScheduleHeader'
-import { ScheduleSubHeader } from '@/components/schedule/ScheduleSubHeader'
-import { ScheduleGrid } from '@/components/schedule/ScheduleGrid'
+import { ScheduleHeader } from '@/components/schedule/calendar/ScheduleHeader'
+import { ScheduleSubHeader } from '@/components/schedule/calendar/ScheduleSubHeader'
+import { ScheduleGrid } from '@/components/schedule/calendar/ScheduleGrid'
 import { LessonDetailsModal } from '@/components/schedule/LessonDetailsModal'
 import { LessonFormModal } from '@/components/schedule/form/LessonFormModal'
-import { DeleteLessonConfirmModal } from '@/components/schedule/DeleteLessonConfirmModal'
-import { RescheduleModal } from '@/components/schedule/RescheduleModal'
+import { DeleteLessonConfirmModal } from '@/components/schedule/modal/DeleteLessonConfirmModal'
+import { RescheduleModal } from '@/components/schedule/modal/RescheduleModal'
 import { LoadingState } from '@/components/ui/LoadingState'
 
 export default function SchedulePage() {

@@ -3,7 +3,11 @@
 import { Calendar, User as UserIcon, Shield } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
+interface ScheduleHeaderProps {
+   isAdmin: boolean
+}
+
+export function ScheduleHeader({ isAdmin }: ScheduleHeaderProps) {
    const router = useRouter()
 
    return (
@@ -22,9 +26,11 @@ export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
                   </p>
                </div>
             </div>
+
             <div className="flex items-center gap-1.5 sm:gap-2">
                {isAdmin && (
                   <button
+                     type="button"
                      onClick={() => router.push('/admin')}
                      className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-lg transition-colors flex items-center gap-1.5"
                   >
@@ -33,6 +39,7 @@ export function ScheduleHeader({ isAdmin }: { isAdmin: boolean }) {
                   </button>
                )}
                <button
+                  type="button"
                   onClick={() => router.push('/profile')}
                   className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-lg flex items-center gap-1.5 transition-colors"
                >

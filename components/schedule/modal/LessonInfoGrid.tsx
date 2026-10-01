@@ -2,7 +2,7 @@
 
 import { Clock, User as UserIcon } from 'lucide-react'
 import { formatUtcTime } from '@/utils/lesson'
-import { TeacherName } from '../TeacherName'
+import { TeacherName } from '@/components/schedule/calendar/TeacherName'
 
 interface InfoGridProps {
    baseColor: string

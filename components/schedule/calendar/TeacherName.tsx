@@ -1,3 +1,5 @@
+'use client'
+
 interface TeacherNameProps {
    fullName?: string
    fallbackText?: string
