@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, parseJsonBody } from '@/lib/apiGuard'
@@ -14,10 +16,15 @@ export const POST = withAuth<{ id: string }>(
       }
 
       const { text, date } = parsed.data
-      const targetDate = new Date(`${date}T00:00:00.000Z`)
+
+      const cleanDate = date.includes('T') ? date.split('T')[0] : date
+      const [y, m, d] = cleanDate.split('-').map(Number)
+      const targetDate = new Date(Date.UTC(y, m - 1, d))
+
+      const trimmedText = text?.trim() ?? ''
 
       try {
-         if (!text) {
+         if (!trimmedText) {
             await prisma.comment.deleteMany({
                where: {
                   lessonId,
@@ -35,20 +42,20 @@ export const POST = withAuth<{ id: string }>(
                },
             },
             create: {
-               text,
+               text: trimmedText,
                date: targetDate,
                lessonId,
                authorId: user.id,
             },
             update: {
-               text,
+               text: trimmedText,
                authorId: user.id,
             },
          })
 
          return NextResponse.json({ success: true, comment })
       } catch (error) {
-         console.error(error)
+         console.error('Ошибка сохранения комментария:', error)
          return NextResponse.json(
             { error: 'Ошибка сохранения комментария' },
             { status: 500 },

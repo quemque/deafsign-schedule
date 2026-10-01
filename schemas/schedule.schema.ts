@@ -101,7 +101,7 @@ export const rescheduleLessonSchema = z.object({
 
 export const lessonCommentSchema = z.object({
    date: z.string().min(1, 'Дата обязательна'),
-   text: z.string().min(1, 'Текст комментария обязателен'),
+   text: z.string().optional().default(''),
 })
 
 export const saveCommentSchema = lessonCommentSchema
