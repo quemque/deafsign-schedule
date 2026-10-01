@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import {
    Play,
    Pause,
@@ -13,128 +12,43 @@ import {
    VolumeX,
    ZoomIn,
 } from 'lucide-react'
+import { useVideoPlayer } from './useVideoPlayer'
 
 interface SignVideoPlayerProps {
    src: string
 }
 
-const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25]
-
 export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
-   const videoRef = useRef<HTMLVideoElement>(null)
-   const containerRef = useRef<HTMLDivElement>(null)
-
-   const [isPlaying, setIsPlaying] = useState(false)
-   const [isMirrored, setIsMirrored] = useState(false)
-   const [isZoomed, setIsZoomed] = useState(false)
-   const [playbackRate, setPlaybackRate] = useState(1.0)
-   const [currentTime, setCurrentTime] = useState(0)
-   const [duration, setDuration] = useState(0)
-   const [isMuted, setIsMuted] = useState(false)
-   const [isFullscreen, setIsFullscreen] = useState(false)
-
-   useEffect(() => {
-      const handleFullscreenChange = () => {
-         setIsFullscreen(Boolean(document.fullscreenElement))
-      }
-
-      document.addEventListener('fullscreenchange', handleFullscreenChange)
-      return () => {
-         document.removeEventListener(
-            'fullscreenchange',
-            handleFullscreenChange,
-         )
-      }
-   }, [])
-
-   useEffect(() => {
-      const video = videoRef.current
-      if (!video) return
-
-      const onTimeUpdate = () => setCurrentTime(video.currentTime)
-      const onLoadedMetadata = () => setDuration(video.duration)
-      const onEnded = () => setIsPlaying(false)
-
-      video.addEventListener('timeupdate', onTimeUpdate)
-      video.addEventListener('loadedmetadata', onLoadedMetadata)
-      video.addEventListener('ended', onEnded)
-
-      return () => {
-         video.removeEventListener('timeupdate', onTimeUpdate)
-         video.removeEventListener('loadedmetadata', onLoadedMetadata)
-         video.removeEventListener('ended', onEnded)
-      }
-   }, [])
-
-   const togglePlay = () => {
-      if (!videoRef.current) return
-      if (isPlaying) {
-         videoRef.current.pause()
-         setIsPlaying(false)
-      } else {
-         videoRef.current.play()
-         setIsPlaying(true)
-      }
-   }
-
-   const handleSeek = (seconds: number) => {
-      if (!videoRef.current) return
-      videoRef.current.currentTime = Math.min(
-         Math.max(videoRef.current.currentTime + seconds, 0),
-         duration,
-      )
-   }
-
-   const cyclePlaybackRate = () => {
-      if (!videoRef.current) return
-      const currentIndex = PLAYBACK_RATES.indexOf(playbackRate)
-      const nextIndex = (currentIndex + 1) % PLAYBACK_RATES.length
-      const nextRate = PLAYBACK_RATES[nextIndex]
-      videoRef.current.playbackRate = nextRate
-      setPlaybackRate(nextRate)
-   }
-
-   const toggleMute = () => {
-      if (!videoRef.current) return
-      videoRef.current.muted = !isMuted
-      setIsMuted(!isMuted)
-   }
-
-   const toggleFullscreen = () => {
-      const container = containerRef.current
-      const video = videoRef.current as any
-      if (!container) return
-
-      if (document.fullscreenElement) {
-         document.exitFullscreen().catch(() => {})
-      } else if (container.requestFullscreen) {
-         container.requestFullscreen().catch(() => {
-            if (video?.webkitEnterFullscreen) {
-               video.webkitEnterFullscreen()
-            }
-         })
-      } else if (video?.webkitEnterFullscreen) {
-         video.webkitEnterFullscreen()
-      }
-   }
-
-   const formatTime = (timeInSeconds: number) => {
-      const minutes = Math.floor(timeInSeconds / 60)
-      const seconds = Math.floor(timeInSeconds % 60)
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`
-   }
-
-   let videoTransform = ''
-   if (isMirrored) videoTransform += ' scaleX(-1)'
-   if (isZoomed) videoTransform += ' scale(1.35)'
+   const {
+      videoRef,
+      containerRef,
+      isPlaying,
+      isMirrored,
+      isZoomed,
+      playbackRate,
+      currentTime,
+      duration,
+      isMuted,
+      isFullscreen,
+      videoTransform,
+      togglePlay,
+      seek,
+      setTime,
+      cyclePlaybackRate,
+      toggleMute,
+      toggleFullscreen,
+      setIsMirrored,
+      setIsZoomed,
+      formattedTime,
+   } = useVideoPlayer()
 
    return (
       <div
          ref={containerRef}
-         className={`relative flex flex-col bg-black overflow-hidden shadow-sm select-none ${
+         className={`relative flex flex-col bg-black overflow-hidden shadow-xs select-none ${
             isFullscreen
                ? 'fixed inset-0 z-9999 w-full h-full rounded-none'
-               : '-mx-3 sm:mx-0 rounded-none sm:rounded-xl'
+               : '-mx-3.5 sm:mx-0 rounded-none sm:rounded-xl'
          }`}
       >
          <div
@@ -150,7 +64,7 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
                src={src}
                playsInline
                className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 origin-center"
-               style={{ transform: videoTransform.trim() || undefined }}
+               style={{ transform: videoTransform }}
             />
 
             {!isPlaying && (
@@ -168,11 +82,7 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
                min={0}
                max={duration || 100}
                value={currentTime}
-               onChange={(e) => {
-                  if (videoRef.current) {
-                     videoRef.current.currentTime = Number(e.target.value)
-                  }
-               }}
+               onChange={(e) => setTime(Number(e.target.value))}
                className="w-full h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-[#8BA888]"
             />
 
@@ -192,18 +102,16 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
 
                   <button
                      type="button"
-                     onClick={() => handleSeek(-5)}
+                     onClick={() => seek(-5)}
                      className="p-1 sm:p-1.5 hover:bg-neutral-800 rounded-md transition-colors"
-                     title="Назад на 5 секунд"
                   >
                      <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
 
                   <button
                      type="button"
-                     onClick={() => handleSeek(5)}
+                     onClick={() => seek(5)}
                      className="p-1 sm:p-1.5 hover:bg-neutral-800 rounded-md transition-colors"
-                     title="Вперед на 5 секунд"
                   >
                      <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
@@ -221,33 +129,31 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
                   </button>
 
                   <span className="font-mono text-[9px] sm:text-[11px] text-neutral-400 pl-0.5">
-                     {formatTime(currentTime)} / {formatTime(duration)}
+                     {formattedTime}
                   </span>
                </div>
 
                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <button
                      type="button"
-                     onClick={() => setIsZoomed(!isZoomed)}
+                     onClick={setIsZoomed}
                      className={`p-1 sm:px-2 sm:py-1 rounded-md text-[11px] font-medium transition-colors ${
                         isZoomed
                            ? 'bg-[#8BA888] text-white'
                            : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                      }`}
-                     title="Приближение жестов"
                   >
                      <ZoomIn className="w-3.5 h-3.5" />
                   </button>
 
                   <button
                      type="button"
-                     onClick={() => setIsMirrored(!isMirrored)}
+                     onClick={setIsMirrored}
                      className={`p-1 sm:px-2 sm:py-1 rounded-md text-[11px] font-medium transition-colors ${
                         isMirrored
                            ? 'bg-[#8BA888] text-white'
                            : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                      }`}
-                     title="Зеркальный режим"
                   >
                      <FlipHorizontal className="w-3.5 h-3.5" />
                   </button>
@@ -256,7 +162,6 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
                      type="button"
                      onClick={cyclePlaybackRate}
                      className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-neutral-800 text-[#8BA888] hover:bg-neutral-700 transition-colors"
-                     title="Скорость воспроизведения"
                   >
                      {playbackRate}x
                   </button>
@@ -265,11 +170,6 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
                      type="button"
                      onClick={toggleFullscreen}
                      className="p-1 sm:p-1.5 hover:bg-neutral-800 rounded-md transition-colors text-white shrink-0"
-                     title={
-                        isFullscreen
-                           ? 'Выйти из полноэкранного режима'
-                           : 'На весь экран'
-                     }
                   >
                      {isFullscreen ? (
                         <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
