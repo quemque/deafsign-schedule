@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { DAYS_OF_WEEK } from '@/constants/schedule'
+import { useLessonForm } from '@/hooks/useLessonForm'
+import { ModeSelector } from './ModeSelector'
 import { ColorPicker } from './ColorPicker'
+import { MainTeacherFields } from './MainTeacherFields'
+import { DaysOfWeekPicker } from './DaysOfWeekPicker'
 import { DayOverridesList } from './DayOverridesList'
 import { TeacherScopeModal } from './TeacherScopeModal'
-import { MainTeacherFields } from './MainTeacherFields'
-import { useLessonForm } from '@/hooks/useLessonForm'
 import {
    addDayTeacher,
    addMainTeacher,
@@ -19,39 +20,6 @@ import {
    updateFormDate,
    updateMainTeacher,
 } from '@/utils/lessonForm'
-
-interface ModeSelectorProps {
-   mode: 'once' | 'weekly'
-   onModeChange: (mode: 'once' | 'weekly') => void
-}
-
-function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
-   const getButtonClassName = (active: boolean) =>
-      `flex-1 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
-         active
-            ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
-            : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
-      }`
-
-   return (
-      <div className="flex gap-2 mb-5">
-         <button
-            type="button"
-            onClick={() => onModeChange('once')}
-            className={getButtonClassName(mode === 'once')}
-         >
-            Разовое
-         </button>
-         <button
-            type="button"
-            onClick={() => onModeChange('weekly')}
-            className={getButtonClassName(mode === 'weekly')}
-         >
-            Каждую неделю
-         </button>
-      </div>
-   )
-}
 
 export function LessonFormModal() {
    const {
@@ -194,37 +162,12 @@ export function LessonFormModal() {
                      )}
 
                      {isRecurringMode && (
-                        <div>
-                           <label className="text-[10px] font-medium text-[#8B857D] mb-1.5 block pl-1">
-                              Дни недели курса
-                           </label>
-                           <div className="flex gap-1.5 flex-wrap">
-                              {DAYS_OF_WEEK.map((day) => {
-                                 const isSelected = (
-                                    form.daysOfWeek || []
-                                 ).includes(day.key)
-
-                                 return (
-                                    <button
-                                       key={day.key}
-                                       type="button"
-                                       onClick={() =>
-                                          setForm(
-                                             toggleFormDayOfWeek(form, day.key),
-                                          )
-                                       }
-                                       className={`flex-1 min-w-[40px] py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all ${
-                                          isSelected
-                                             ? 'bg-[#8BA888] text-white border-[#8BA888] shadow-sm shadow-[#8BA888]/20'
-                                             : 'bg-[#F5F2ED] text-[#5A534A] border-[#E5E0D8] hover:bg-[#EDE8E0]'
-                                       }`}
-                                    >
-                                       {day.short}
-                                    </button>
-                                 )
-                              })}
-                           </div>
-                        </div>
+                        <DaysOfWeekPicker
+                           selectedDays={form.daysOfWeek || []}
+                           onToggleDay={(dayKey) =>
+                              setForm(toggleFormDayOfWeek(form, dayKey))
+                           }
+                        />
                      )}
 
                      <div className="grid grid-cols-2 gap-3">
