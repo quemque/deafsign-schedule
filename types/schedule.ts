@@ -33,6 +33,13 @@ export interface LessonReschedule {
    lessonId: string
 }
 
+export interface HomeworkVideoItem {
+   id: string
+   url: string
+   key: string
+   title?: string
+}
+
 export interface Homework {
    id: string
    date: string | Date
@@ -40,6 +47,9 @@ export interface Homework {
    description: string
    videoUrl?: string | null
    videoKey?: string | null
+   videos?: HomeworkVideoItem[] | null
+   order: number
+   unlockDate?: string | Date | null
    lessonId: string
    authorId: string
    author?: {

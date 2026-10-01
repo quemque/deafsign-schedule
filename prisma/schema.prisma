@@ -306,24 +306,26 @@ model AuditLog {
   @@map("audit_logs")
 }
 model Homework {
-  id          String   @id @default(cuid())
-  date        DateTime @db.Date
+  id          String    @id @default(cuid())
+  date        DateTime  @db.Date
   title       String?
-  description String   @db.Text
+  description String    @db.Text
   videoUrl    String?
   videoKey    String?
+  videos      Json?
+  order       Int       @default(0)
+  unlockDate  DateTime?
 
-  lessonId String
-  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@unique([lessonId, date])
-  @@index([lessonId])
-  @@index([date])
+  @@index([lessonId, date])
+  @@index([authorId])
   @@map("homeworks")
 }

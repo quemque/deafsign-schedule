@@ -80,7 +80,7 @@ function LessonDetailsHeader({
    return (
       <div
          style={{ backgroundColor: `${baseColor}15` }}
-         className="p-4 sm:p-6 border-b border-[#E5E0D8] relative shrink-0"
+         className="p-4 sm:p-5 border-b border-[#E5E0D8] relative shrink-0"
       >
          <button
             type="button"
@@ -117,7 +117,7 @@ function LessonDetailsHeader({
             </span>
          </div>
 
-         <h2 className="text-base sm:text-xl font-extrabold text-[#3E3A35] pr-8 leading-tight">
+         <h2 className="text-base sm:text-lg font-extrabold text-[#3E3A35] pr-8 leading-tight">
             {subject}
          </h2>
       </div>
@@ -222,7 +222,7 @@ function LessonDetailsFooter({
    onClose,
 }: FooterProps) {
    return (
-      <div className="p-3 sm:p-6 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex items-center justify-between gap-2">
+      <div className="p-3 sm:p-4 border-t border-[#F0EDE8] bg-[#FDFCFB] shrink-0 flex items-center justify-between gap-2">
          {isAdmin ? (
             <div className="flex gap-1.5 w-auto">
                <button
@@ -323,9 +323,17 @@ export function LessonDetailsModal() {
       })
    }
 
+   const isHomeworkTab = activeTab === 'homework'
+
    return (
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#2C2824]/40 backdrop-blur-xs animate-in fade-in duration-200">
-         <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#E5E0D8] w-full max-w-lg max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden">
+         <div
+            className={`bg-white shadow-2xl border border-[#E5E0D8] w-full flex flex-col overflow-hidden transition-all duration-200 ${
+               isHomeworkTab
+                  ? 'h-[100dvh] sm:h-auto sm:max-h-[92dvh] sm:max-w-4xl rounded-none sm:rounded-2xl'
+                  : 'max-h-[92dvh] sm:max-h-[90dvh] max-w-lg rounded-t-3xl sm:rounded-2xl'
+            }`}
+         >
             <LessonDetailsHeader
                subject={lesson.subject}
                baseColor={baseColor}

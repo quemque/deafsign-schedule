@@ -2,7 +2,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { homeworkApi } from '@/services/homeworkApi'
-import type { SaveHomeworkInput } from '@/schemas/homework.schema'
+import type {
+   CreateHomeworkInput,
+   UpdateHomeworkInput,
+} from '@/schemas/homework.schema'
 
 export function useHomeworkQuery(
    lessonId: string | null,
@@ -10,10 +13,10 @@ export function useHomeworkQuery(
    enabled: boolean = true,
 ) {
    return useQuery({
-      queryKey: ['homework', lessonId, date],
+      queryKey: ['homeworks', lessonId, date],
       queryFn: () => {
-         if (!lessonId || !date) return { homework: null }
-         return homeworkApi.getHomework(lessonId, date)
+         if (!lessonId || !date) return { homeworks: [] }
+         return homeworkApi.getHomeworks(lessonId, date)
       },
       enabled: Boolean(lessonId && date && enabled),
       staleTime: 1000 * 60 * 5,
@@ -23,29 +26,42 @@ export function useHomeworkQuery(
 export function useHomeworkMutations(lessonId: string, date: string) {
    const queryClient = useQueryClient()
 
-   const saveMutation = useMutation({
-      mutationFn: (payload: SaveHomeworkInput) =>
-         homeworkApi.saveHomework(lessonId, payload),
+   const createMutation = useMutation({
+      mutationFn: (payload: CreateHomeworkInput) =>
+         homeworkApi.createHomework(lessonId, payload),
       onSuccess: () => {
          queryClient.invalidateQueries({
-            queryKey: ['homework', lessonId, date],
+            queryKey: ['homeworks', lessonId, date],
+         })
+      },
+   })
+
+   const updateMutation = useMutation({
+      mutationFn: (payload: UpdateHomeworkInput) =>
+         homeworkApi.updateHomework(lessonId, payload),
+      onSuccess: () => {
+         queryClient.invalidateQueries({
+            queryKey: ['homeworks', lessonId, date],
          })
       },
    })
 
    const deleteMutation = useMutation({
-      mutationFn: () => homeworkApi.deleteHomework(lessonId, date),
+      mutationFn: (homeworkId: string) =>
+         homeworkApi.deleteHomework(lessonId, homeworkId),
       onSuccess: () => {
          queryClient.invalidateQueries({
-            queryKey: ['homework', lessonId, date],
+            queryKey: ['homeworks', lessonId, date],
          })
       },
    })
 
    return {
-      saveHomework: saveMutation.mutateAsync,
+      createHomework: createMutation.mutateAsync,
+      updateHomework: updateMutation.mutateAsync,
       deleteHomework: deleteMutation.mutateAsync,
-      isSaving: saveMutation.isPending,
+      isCreating: createMutation.isPending,
+      isUpdating: updateMutation.isPending,
       isDeleting: deleteMutation.isPending,
    }
 }

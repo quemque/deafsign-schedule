@@ -1,36 +1,56 @@
-import type { SaveHomeworkInput } from '@/schemas/homework.schema'
+import type {
+   CreateHomeworkInput,
+   UpdateHomeworkInput,
+} from '@/schemas/homework.schema'
 import type { Homework } from '@/types/schedule'
 
-export interface HomeworkResponse {
-   homework: Homework | null
+export interface HomeworkListResponse {
+   homeworks: (Homework & { isLocked?: boolean })[]
+}
+
+export interface HomeworkSingleResponse {
+   homework: Homework
 }
 
 export const homeworkApi = {
-   async getHomework(
+   async getHomeworks(
       lessonId: string,
       date: string,
-   ): Promise<HomeworkResponse> {
+   ): Promise<HomeworkListResponse> {
       const res = await fetch(`/api/schedule/${lessonId}/homework?date=${date}`)
-      if (!res.ok) throw new Error('Ошибка получения домашнего задания')
+      if (!res.ok) throw new Error('Ошибка получения домашних заданий')
       return res.json()
    },
 
-   async saveHomework(
+   async createHomework(
       lessonId: string,
-      payload: SaveHomeworkInput,
-   ): Promise<HomeworkResponse> {
+      payload: CreateHomeworkInput,
+   ): Promise<HomeworkSingleResponse> {
+      const res = await fetch(`/api/schedule/${lessonId}/homework`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Ошибка создания домашнего задания')
+      return res.json()
+   },
+
+   async updateHomework(
+      lessonId: string,
+      payload: UpdateHomeworkInput,
+   ): Promise<HomeworkSingleResponse> {
       const res = await fetch(`/api/schedule/${lessonId}/homework`, {
          method: 'PUT',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error('Ошибка сохранения домашнего задания')
+      if (!res.ok) throw new Error('Ошибка обновления домашнего задания')
       return res.json()
    },
 
-   async deleteHomework(lessonId: string, date: string): Promise<void> {
+   async deleteHomework(lessonId: string, homeworkId: string): Promise<void> {
       const res = await fetch(
-         `/api/schedule/${lessonId}/homework?date=${date}`,
+         `/api/schedule/${lessonId}/homework?homeworkId=${homeworkId}`,
          {
             method: 'DELETE',
          },
