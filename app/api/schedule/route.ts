@@ -2,12 +2,41 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, DayOfWeek } from '@prisma/client'
 import { withAuth, parseJsonBody, parseQueryParams } from '@/lib/apiGuard'
 import {
    createLessonSchema,
    scheduleListQuerySchema,
 } from '@/schemas/schedule.schema'
+
+const DAY_MAP: Record<string, DayOfWeek> = {
+   mon: DayOfWeek.MONDAY,
+   tue: DayOfWeek.TUESDAY,
+   wed: DayOfWeek.WEDNESDAY,
+   thu: DayOfWeek.THURSDAY,
+   fri: DayOfWeek.FRIDAY,
+   sat: DayOfWeek.SATURDAY,
+   sun: DayOfWeek.SUNDAY,
+   monday: DayOfWeek.MONDAY,
+   tuesday: DayOfWeek.TUESDAY,
+   wednesday: DayOfWeek.WEDNESDAY,
+   thursday: DayOfWeek.THURSDAY,
+   friday: DayOfWeek.FRIDAY,
+   saturday: DayOfWeek.SATURDAY,
+   sunday: DayOfWeek.SUNDAY,
+   MONDAY: DayOfWeek.MONDAY,
+   TUESDAY: DayOfWeek.TUESDAY,
+   WEDNESDAY: DayOfWeek.WEDNESDAY,
+   THURSDAY: DayOfWeek.THURSDAY,
+   FRIDAY: DayOfWeek.FRIDAY,
+   SATURDAY: DayOfWeek.SATURDAY,
+   SUNDAY: DayOfWeek.SUNDAY,
+}
+
+function normalizeDayOfWeek(day?: string | null): DayOfWeek | null {
+   if (!day) return null
+   return DAY_MAP[day] || DAY_MAP[day.toLowerCase()] || null
+}
 
 export async function GET(req: NextRequest) {
    try {
@@ -119,18 +148,23 @@ export const POST = withAuth(['ADMIN'], async (req, { user }) => {
    let startsAt: Date
    let endsAt: Date
    let recurring = false
-   let resolvedDaysOfWeek = daysOfWeek || []
-   let resolvedDayOfWeek = dayOfWeek || null
+
+   const rawDays =
+      Array.isArray(daysOfWeek) && daysOfWeek.length > 0
+         ? daysOfWeek
+         : dayOfWeek
+           ? [dayOfWeek]
+           : []
+
+   const normalizedDays: DayOfWeek[] = rawDays
+      .map((d: string) => normalizeDayOfWeek(d))
+      .filter((d): d is DayOfWeek => d !== null)
+
+   const primaryDay: DayOfWeek | null =
+      normalizedDays[0] || normalizeDayOfWeek(dayOfWeek)
 
    if (isRecurring) {
-      const selectedDays =
-         resolvedDaysOfWeek.length > 0
-            ? resolvedDaysOfWeek
-            : dayOfWeek
-              ? [dayOfWeek]
-              : []
-
-      if (selectedDays.length === 0 || !startTime || !endTime || !date) {
+      if (normalizedDays.length === 0 || !startTime || !endTime || !date) {
          return NextResponse.json(
             { error: 'Укажите дату начала, дни недели и время' },
             { status: 400 },
@@ -138,21 +172,28 @@ export const POST = withAuth(['ADMIN'], async (req, { user }) => {
       }
 
       recurring = true
-      resolvedDaysOfWeek = selectedDays
-      resolvedDayOfWeek = selectedDays[0]
 
       const [y, m, d] = date.split('-').map(Number)
-      const dayIndexMap = [
-         'SUNDAY',
-         'MONDAY',
-         'TUESDAY',
-         'WEDNESDAY',
-         'THURSDAY',
-         'FRIDAY',
-         'SATURDAY',
+      const dayIndexMap: DayOfWeek[] = [
+         DayOfWeek.SUNDAY,
+         DayOfWeek.MONDAY,
+         DayOfWeek.TUESDAY,
+         DayOfWeek.WEDNESDAY,
+         DayOfWeek.THURSDAY,
+         DayOfWeek.FRIDAY,
+         DayOfWeek.SATURDAY,
       ]
       const firstDayKey = dayIndexMap[new Date(y, m - 1, d).getDay()]
-      const customSlot = timeByDay?.[firstDayKey]
+
+      const timeRecord = timeByDay as Record<
+         string,
+         { startTime?: string; endTime?: string }
+      > | null
+
+      const customSlot =
+         timeRecord?.[firstDayKey] ||
+         timeRecord?.[firstDayKey.toLowerCase()] ||
+         timeRecord?.[firstDayKey.slice(0, 3).toLowerCase()]
 
       const activeStartTime = customSlot?.startTime || startTime
       const activeEndTime = customSlot?.endTime || endTime
@@ -180,25 +221,33 @@ export const POST = withAuth(['ADMIN'], async (req, { user }) => {
    }
 
    try {
+      const cleanTeacherId =
+         typeof teacherId === 'string' && teacherId.trim().length > 0
+            ? teacherId.trim()
+            : null
+
       const lesson = await prisma.lesson.create({
          data: {
             subject,
-            teacherId: teacherId || null,
-            customTeacherName: customTeacherName || null,
-            teacherByDay: teacherByDay
-               ? (teacherByDay as Prisma.InputJsonValue)
-               : Prisma.DbNull,
-            timeByDay: timeByDay
-               ? (timeByDay as Prisma.InputJsonValue)
-               : Prisma.DbNull,
+            teacherId: cleanTeacherId,
+            customTeacherName: customTeacherName?.trim() || null,
+            teacherByDay:
+               teacherByDay && Object.keys(teacherByDay).length > 0
+                  ? (teacherByDay as Prisma.InputJsonValue)
+                  : Prisma.DbNull,
+            timeByDay:
+               timeByDay && Object.keys(timeByDay).length > 0
+                  ? (timeByDay as Prisma.InputJsonValue)
+                  : Prisma.DbNull,
             room: null,
             color: color || '#8BA888',
-            totalLessons: recurring ? totalLessons : null,
+            totalLessons:
+               recurring && totalLessons ? Number(totalLessons) : null,
             startsAt,
             endsAt,
             isRecurring: recurring,
-            dayOfWeek: resolvedDayOfWeek,
-            daysOfWeek: resolvedDaysOfWeek,
+            dayOfWeek: primaryDay,
+            daysOfWeek: normalizedDays,
             createdBy: user.id,
          },
          include: {

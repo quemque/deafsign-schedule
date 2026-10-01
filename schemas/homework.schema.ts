@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
-export const homeworkVideoItemSchema = z.object({
+export const homeworkMediaItemSchema = z.object({
    id: z.string(),
+   type: z.enum(['video', 'image']).default('video'),
    url: z.string().url(),
    key: z.string(),
    title: z.string().optional().nullable(),
@@ -25,7 +26,7 @@ export const createHomeworkSchema = z.object({
    description: z.string().trim().min(1, 'Укажите текст задания'),
    videoUrl: z.string().url().optional().nullable(),
    videoKey: z.string().optional().nullable(),
-   videos: z.array(homeworkVideoItemSchema).optional().nullable(),
+   videos: z.array(homeworkMediaItemSchema).optional().nullable(),
    unlockDate: z.string().optional().nullable(),
    order: z.number().int().nonnegative().optional(),
 })
@@ -36,7 +37,7 @@ export const updateHomeworkSchema = z.object({
    description: z.string().trim().min(1, 'Укажите текст задания'),
    videoUrl: z.string().url().optional().nullable(),
    videoKey: z.string().optional().nullable(),
-   videos: z.array(homeworkVideoItemSchema).optional().nullable(),
+   videos: z.array(homeworkMediaItemSchema).optional().nullable(),
    unlockDate: z.string().optional().nullable(),
    order: z.number().int().nonnegative().optional(),
 })

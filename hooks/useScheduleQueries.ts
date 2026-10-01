@@ -21,7 +21,7 @@ export function useScheduleQuery(params?: {
 }) {
    return useQuery({
       queryKey: queryKeys.schedule.list(params),
-      queryFn: () => scheduleApi.getSchedule(params),
+      queryFn: () => scheduleApi.getLessons(params?.startDate, params?.endDate),
       placeholderData: keepPreviousData,
       staleTime: 1000 * 60 * 5,
    })
@@ -33,7 +33,7 @@ export function useScheduleLessonsQuery(params?: {
 }) {
    return useQuery({
       queryKey: queryKeys.schedule.list(params),
-      queryFn: () => scheduleApi.getSchedule(params),
+      queryFn: () => scheduleApi.getLessons(params?.startDate, params?.endDate),
       select: (data) => data?.lessons ?? [],
       placeholderData: keepPreviousData,
       staleTime: 1000 * 60 * 5,

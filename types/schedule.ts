@@ -33,12 +33,17 @@ export interface LessonReschedule {
    lessonId: string
 }
 
-export interface HomeworkVideoItem {
+export type MediaType = 'video' | 'image'
+
+export interface HomeworkMediaItem {
    id: string
+   type: MediaType
    url: string
    key: string
    title?: string
 }
+
+export type HomeworkVideoItem = HomeworkMediaItem
 
 export interface Homework {
    id: string
@@ -47,7 +52,7 @@ export interface Homework {
    description: string
    videoUrl?: string | null
    videoKey?: string | null
-   videos?: HomeworkVideoItem[] | null
+   videos?: HomeworkMediaItem[] | null
    order: number
    unlockDate?: string | Date | null
    lessonId: string

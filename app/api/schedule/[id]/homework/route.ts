@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { withAuth, parseJsonBody, parseQueryParams } from '@/lib/apiGuard'
 import {
@@ -8,7 +9,7 @@ import {
    updateHomeworkSchema,
 } from '@/schemas/homework.schema'
 import { deleteS3File } from '@/lib/s3'
-import type { HomeworkVideoItem } from '@/types/schedule'
+import type { HomeworkMediaItem } from '@/types/schedule'
 
 export const GET = withAuth<{ id: string }>(
    ['ADMIN', 'TEACHER', 'USER'],
@@ -45,13 +46,19 @@ export const GET = withAuth<{ id: string }>(
          const isLocked =
             !isPrivileged && hw.unlockDate && new Date(hw.unlockDate) > now
 
-         let resolvedVideos: HomeworkVideoItem[] = []
+         let resolvedMedia: HomeworkMediaItem[] = []
          if (Array.isArray(hw.videos)) {
-            resolvedVideos = hw.videos as unknown as HomeworkVideoItem[]
+            resolvedMedia = (hw.videos as unknown as HomeworkMediaItem[]).map(
+               (item) => ({
+                  ...item,
+                  type: item.type || 'video',
+               }),
+            )
          } else if (hw.videoUrl) {
-            resolvedVideos = [
+            resolvedMedia = [
                {
                   id: 'legacy-1',
+                  type: 'video',
                   url: hw.videoUrl,
                   key: hw.videoKey || '',
                   title: 'Видеоматериал',
@@ -81,7 +88,7 @@ export const GET = withAuth<{ id: string }>(
 
          return {
             ...hw,
-            videos: resolvedVideos,
+            videos: resolvedMedia,
             isLocked: false,
          }
       })
@@ -121,13 +128,14 @@ export const POST = withAuth<{ id: string }>(
          },
       })
 
-      const resolvedVideos =
+      const resolvedMedia: HomeworkMediaItem[] =
          videos && videos.length > 0
-            ? videos
+            ? (videos as HomeworkMediaItem[])
             : videoUrl
               ? [
                    {
                       id: '1',
+                      type: 'video',
                       url: videoUrl,
                       key: videoKey || '',
                       title: 'Видео',
@@ -135,15 +143,20 @@ export const POST = withAuth<{ id: string }>(
                 ]
               : []
 
+      const firstVideo = resolvedMedia.find((m) => m.type === 'video')
+
       const homework = await prisma.homework.create({
          data: {
             lessonId: id,
             date: targetDate,
             title: title || null,
             description,
-            videoUrl: resolvedVideos[0]?.url || videoUrl || null,
-            videoKey: resolvedVideos[0]?.key || videoKey || null,
-            videos: resolvedVideos as any,
+            videoUrl: firstVideo?.url || videoUrl || null,
+            videoKey: firstVideo?.key || videoKey || null,
+            videos:
+               resolvedMedia.length > 0
+                  ? (resolvedMedia as unknown as Prisma.InputJsonValue)
+                  : Prisma.JsonNull,
             unlockDate: resolvedUnlockDate,
             order: order ?? count,
             authorId: user.id,
@@ -196,17 +209,18 @@ export const PUT = withAuth<{ id: string }>(
          )
       }
 
-      const existingVideos = (Array.isArray(existing.videos)
+      const existingMedia = (Array.isArray(existing.videos)
          ? existing.videos
-         : []) as unknown as HomeworkVideoItem[]
+         : []) as unknown as HomeworkMediaItem[]
 
-      const newVideos =
+      const newMedia: HomeworkMediaItem[] =
          videos && videos.length > 0
-            ? videos
+            ? (videos as HomeworkMediaItem[])
             : videoUrl
               ? [
                    {
                       id: '1',
+                      type: 'video',
                       url: videoUrl,
                       key: videoKey || '',
                       title: 'Видео',
@@ -214,37 +228,30 @@ export const PUT = withAuth<{ id: string }>(
                 ]
               : []
 
-      const newKeys = new Set(newVideos.map((v) => v.key))
-      for (const oldV of existingVideos) {
-         if (oldV.key && !newKeys.has(oldV.key)) {
+      const newKeys = new Set(newMedia.map((v) => v.key))
+      for (const oldItem of existingMedia) {
+         if (oldItem.key && !newKeys.has(oldItem.key)) {
             try {
-               await deleteS3File(oldV.key)
+               await deleteS3File(oldItem.key)
             } catch (err) {
                console.error(err)
             }
          }
       }
 
-      if (
-         existing.videoKey &&
-         !newKeys.has(existing.videoKey) &&
-         videoKey !== existing.videoKey
-      ) {
-         try {
-            await deleteS3File(existing.videoKey)
-         } catch (err) {
-            console.error(err)
-         }
-      }
+      const firstVideo = newMedia.find((m) => m.type === 'video')
 
       const homework = await prisma.homework.update({
          where: { id: homeworkId },
          data: {
             title: title || null,
             description,
-            videoUrl: newVideos[0]?.url || videoUrl || null,
-            videoKey: newVideos[0]?.key || videoKey || null,
-            videos: newVideos as any,
+            videoUrl: firstVideo?.url || videoUrl || null,
+            videoKey: firstVideo?.key || videoKey || null,
+            videos:
+               newMedia.length > 0
+                  ? (newMedia as unknown as Prisma.InputJsonValue)
+                  : Prisma.JsonNull,
             unlockDate: unlockDate ? new Date(unlockDate) : null,
             order: order ?? existing.order,
          },
@@ -287,14 +294,14 @@ export const DELETE = withAuth<{ id: string }>(
          )
       }
 
-      const existingVideos = (Array.isArray(existing.videos)
+      const existingMedia = (Array.isArray(existing.videos)
          ? existing.videos
-         : []) as unknown as HomeworkVideoItem[]
+         : []) as unknown as HomeworkMediaItem[]
 
-      for (const v of existingVideos) {
-         if (v.key) {
+      for (const item of existingMedia) {
+         if (item.key) {
             try {
-               await deleteS3File(v.key)
+               await deleteS3File(item.key)
             } catch (err) {
                console.error(err)
             }

@@ -1,72 +1,150 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
-import { withAuth, parseJsonBody, parseQueryParams } from '@/lib/apiGuard'
+import { withAuth, parseQueryParams, parseJsonBody } from '@/lib/apiGuard'
 import {
-   patchLessonSchema,
    deleteLessonQuerySchema,
+   updateLessonSchema,
 } from '@/schemas/schedule.schema'
 
-export const PATCH = withAuth<{ id: string }>(
+export const DELETE = withAuth<{ id: string }>(
    ['ADMIN'],
    async (req, { params }) => {
       const { id } = params
-
-      const parsed = await parseJsonBody(req, patchLessonSchema)
+      const parsed = parseQueryParams(req.url, deleteLessonQuerySchema)
       if ('errorResponse' in parsed) {
          return parsed.errorResponse
       }
 
-      const body = parsed.data
+      const { mode, date } = parsed.data
 
-      if (body.action === 'reschedule') {
-         const { originalDate, newDate, newStartTime, newEndTime } = body
-         const [oy, om, od] = originalDate.split('-').map(Number)
-         const origDateObj = new Date(Date.UTC(oy, om - 1, od))
+      const lesson = await prisma.lesson.findUnique({
+         where: { id },
+      })
 
-         const [ny, nm, nd] = newDate.split('-').map(Number)
-         const [sh, sm] = newStartTime.split(':').map(Number)
-         const [eh, em] = newEndTime.split(':').map(Number)
-
-         const newStartsAt = new Date(Date.UTC(ny, nm - 1, nd, sh, sm, 0, 0))
-         const newEndsAt = new Date(Date.UTC(ny, nm - 1, nd, eh, em, 0, 0))
-
-         await prisma.lessonReschedule.upsert({
-            where: {
-               lessonId_originalDate: {
-                  lessonId: id,
-                  originalDate: origDateObj,
-               },
-            },
-            create: {
-               lessonId: id,
-               originalDate: origDateObj,
-               newStartsAt,
-               newEndsAt,
-            },
-            update: {
-               newStartsAt,
-               newEndsAt,
-            },
-         })
-
-         const lesson = await prisma.lesson.findUnique({
-            where: { id },
-            include: {
-               teacher: { select: { id: true, name: true } },
-               comments: true,
-               cancellations: true,
-               overrides: true,
-               reschedules: true,
-            },
-         })
-
-         return NextResponse.json({ lesson })
+      if (!lesson) {
+         return NextResponse.json(
+            { error: 'Занятие не найдено' },
+            { status: 404 },
+         )
       }
 
-      const { teacherScope, activeDate, ...data } = body
+      if (mode === 'all' || !lesson.isRecurring) {
+         await prisma.lesson.delete({
+            where: { id },
+         })
+         return NextResponse.json({ success: true })
+      }
 
-      if (teacherScope === 'this' && activeDate) {
+      if (!date) {
+         return NextResponse.json(
+            { error: 'Укажите дату занятия для выборочного удаления' },
+            { status: 400 },
+         )
+      }
+
+      const [y, m, d] = date.split('-').map(Number)
+      const targetDate = new Date(Date.UTC(y, m - 1, d))
+
+      if (mode === 'this') {
+         await prisma.$transaction([
+            prisma.lessonCancellation.upsert({
+               where: {
+                  lessonId_date: {
+                     lessonId: id,
+                     date: targetDate,
+                  },
+               },
+               create: {
+                  lessonId: id,
+                  date: targetDate,
+               },
+               update: {},
+            }),
+            prisma.lessonOverride.deleteMany({
+               where: {
+                  lessonId: id,
+                  date: targetDate,
+               },
+            }),
+            prisma.lessonReschedule.deleteMany({
+               where: {
+                  lessonId: id,
+                  originalDate: targetDate,
+               },
+            }),
+         ])
+         return NextResponse.json({ success: true })
+      }
+
+      if (mode === 'future') {
+         const dayBefore = new Date(targetDate)
+         dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
+
+         await prisma.$transaction([
+            prisma.lesson.update({
+               where: { id },
+               data: {
+                  endDate: dayBefore,
+               },
+            }),
+            prisma.lessonCancellation.deleteMany({
+               where: {
+                  lessonId: id,
+                  date: { gte: targetDate },
+               },
+            }),
+            prisma.lessonOverride.deleteMany({
+               where: {
+                  lessonId: id,
+                  date: { gte: targetDate },
+               },
+            }),
+            prisma.lessonReschedule.deleteMany({
+               where: {
+                  lessonId: id,
+                  originalDate: { gte: targetDate },
+               },
+            }),
+         ])
+         return NextResponse.json({ success: true })
+      }
+
+      return NextResponse.json(
+         { error: 'Неизвестный режим удаления' },
+         { status: 400 },
+      )
+   },
+)
+
+export const PUT = withAuth<{ id: string }>(
+   ['ADMIN'],
+   async (req, { params }) => {
+      const { id } = params
+      const parsed = await parseJsonBody(req, updateLessonSchema)
+      if ('errorResponse' in parsed) {
+         return parsed.errorResponse
+      }
+
+      const {
+         subject,
+         color,
+         totalLessons,
+         teacherId,
+         customTeacherName,
+         teacherByDay,
+         timeByDay,
+         daysOfWeek,
+         teacherScope,
+         activeDate,
+      } = parsed.data
+
+      if (
+         teacherScope === 'this' &&
+         activeDate &&
+         customTeacherName !== undefined
+      ) {
          const [y, m, d] = activeDate.split('-').map(Number)
          const targetDate = new Date(Date.UTC(y, m - 1, d))
 
@@ -80,34 +158,15 @@ export const PATCH = withAuth<{ id: string }>(
             create: {
                lessonId: id,
                date: targetDate,
-               customTeacherName: data.customTeacherName || null,
+               customTeacherName: customTeacherName || null,
             },
             update: {
-               customTeacherName: data.customTeacherName || null,
+               customTeacherName: customTeacherName || null,
             },
          })
 
-         const lesson = await prisma.lesson.update({
+         const updated = await prisma.lesson.findUnique({
             where: { id },
-            data: {
-               subject: data.subject,
-               color: data.color,
-               teacherByDay:
-                  data.teacherByDay !== undefined
-                     ? data.teacherByDay
-                        ? (data.teacherByDay as Prisma.InputJsonValue)
-                        : Prisma.DbNull
-                     : undefined,
-               timeByDay:
-                  data.timeByDay !== undefined
-                     ? data.timeByDay
-                        ? (data.timeByDay as Prisma.InputJsonValue)
-                        : Prisma.DbNull
-                     : undefined,
-               daysOfWeek: data.daysOfWeek,
-               dayOfWeek: data.dayOfWeek,
-               totalLessons: data.totalLessons,
-            },
             include: {
                teacher: { select: { id: true, name: true } },
                comments: true,
@@ -116,34 +175,23 @@ export const PATCH = withAuth<{ id: string }>(
                reschedules: true,
             },
          })
-
-         return NextResponse.json({ lesson })
+         return NextResponse.json({ lesson: updated })
       }
 
-      const lesson = await prisma.lesson.update({
+      const updated = await prisma.lesson.update({
          where: { id },
          data: {
-            subject: data.subject,
-            teacherId: data.teacherId || null,
-            customTeacherName: data.customTeacherName || null,
+            subject: subject !== undefined ? subject : undefined,
+            color: color !== undefined ? color : undefined,
+            totalLessons: totalLessons !== undefined ? totalLessons : undefined,
+            teacherId: teacherId !== undefined ? teacherId : undefined,
+            customTeacherName:
+               customTeacherName !== undefined ? customTeacherName : undefined,
             teacherByDay:
-               data.teacherByDay !== undefined
-                  ? data.teacherByDay
-                     ? (data.teacherByDay as Prisma.InputJsonValue)
-                     : Prisma.DbNull
-                  : undefined,
-            timeByDay:
-               data.timeByDay !== undefined
-                  ? data.timeByDay
-                     ? (data.timeByDay as Prisma.InputJsonValue)
-                     : Prisma.DbNull
-                  : undefined,
-            color: data.color,
-            daysOfWeek: data.daysOfWeek,
-            dayOfWeek: data.dayOfWeek,
-            totalLessons: data.totalLessons,
-            startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-            endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
+               teacherByDay !== undefined ? (teacherByDay as any) : undefined,
+            timeByDay: timeByDay !== undefined ? (timeByDay as any) : undefined,
+            daysOfWeek:
+               daysOfWeek !== undefined ? (daysOfWeek as any) : undefined,
          },
          include: {
             teacher: { select: { id: true, name: true } },
@@ -154,59 +202,6 @@ export const PATCH = withAuth<{ id: string }>(
          },
       })
 
-      return NextResponse.json({ lesson })
-   },
-)
-
-export const DELETE = withAuth<{ id: string }>(
-   ['ADMIN'],
-   async (req, { params }) => {
-      const { id } = params
-
-      const parsed = parseQueryParams(req.url, deleteLessonQuerySchema)
-      if ('errorResponse' in parsed) {
-         return parsed.errorResponse
-      }
-
-      const { mode, date: dateStr } = parsed.data
-
-      if (mode === 'this') {
-         if (!dateStr) {
-            return NextResponse.json(
-               { error: 'Не указана дата' },
-               { status: 400 },
-            )
-         }
-         const targetDate = new Date(`${dateStr}T00:00:00.000Z`)
-
-         await prisma.lessonCancellation.upsert({
-            where: {
-               lessonId_date: { lessonId: id, date: targetDate },
-            },
-            create: { lessonId: id, date: targetDate },
-            update: {},
-         })
-         return NextResponse.json({ ok: true, mode: 'this' })
-      }
-
-      if (mode === 'future') {
-         if (!dateStr) {
-            return NextResponse.json(
-               { error: 'Не указана дата' },
-               { status: 400 },
-            )
-         }
-         const cutoffDate = new Date(`${dateStr}T00:00:00.000Z`)
-         cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 1)
-
-         await prisma.lesson.update({
-            where: { id },
-            data: { endDate: cutoffDate },
-         })
-         return NextResponse.json({ ok: true, mode: 'future' })
-      }
-
-      await prisma.lesson.delete({ where: { id } })
-      return NextResponse.json({ ok: true, mode: 'all' })
+      return NextResponse.json({ lesson: updated })
    },
 )

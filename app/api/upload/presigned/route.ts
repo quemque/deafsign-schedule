@@ -11,8 +11,10 @@ export const POST = withAuth(['ADMIN', 'TEACHER'], async (req) => {
    }
 
    const { fileName, fileType } = parsed.data
-   const extension = fileName.split('.').pop() || 'mp4'
-   const uniqueKey = `homework/${Date.now()}-${crypto.randomUUID()}.${extension}`
+   const isImage = fileType.startsWith('image/')
+   const folder = isImage ? 'homework/images' : 'homework/videos'
+   const extension = fileName.split('.').pop() || (isImage ? 'jpg' : 'mp4')
+   const uniqueKey = `${folder}/${Date.now()}-${crypto.randomUUID()}.${extension}`
 
    try {
       const { uploadUrl, publicUrl, key } = await createPresignedUploadUrl(
