@@ -1,6 +1,23 @@
+import type {
+   DayOfWeekType,
+   HomeworkMediaItem,
+   MediaType,
+} from '@/schemas/schedule.schema'
+
+export type { DayOfWeekType, HomeworkMediaItem, MediaType }
+export type HomeworkVideoItem = HomeworkMediaItem
+
+export type DeleteLessonMode = 'this' | 'future' | 'all'
+
 export interface Teacher {
    id: string
    name: string
+}
+
+export interface CurrentUser {
+   id: string
+   name: string
+   role: 'ADMIN' | 'TEACHER' | 'USER'
 }
 
 export interface LessonComment {
@@ -33,18 +50,6 @@ export interface LessonReschedule {
    lessonId: string
 }
 
-export type MediaType = 'video' | 'image'
-
-export interface HomeworkMediaItem {
-   id: string
-   type: MediaType
-   url: string
-   key: string
-   title?: string
-}
-
-export type HomeworkVideoItem = HomeworkMediaItem
-
 export interface Homework {
    id: string
    date: string | Date
@@ -65,19 +70,6 @@ export interface Homework {
    updatedAt: string | Date
 }
 
-export type DeleteLessonMode = 'this' | 'future' | 'all'
-
-export interface CurrentUser {
-   id: string
-   name: string
-   role: 'ADMIN' | 'TEACHER' | 'USER'
-}
-
-export interface DayTimeSlot {
-   startTime: string
-   endTime: string
-}
-
 export interface ApiLesson {
    id: string
    subject: string
@@ -88,16 +80,13 @@ export interface ApiLesson {
    totalLessons?: number | null
    color?: string | null
    customTeacherName?: string | null
-   teacherByDay?: Record<string, string> | null
-   timeByDay?: Record<string, DayTimeSlot> | null
-   dayOfWeek?: string | null
-   daysOfWeek?: string[]
+   teacherByDay?: Record<string, string[] | string> | null
+   timeByDay?: Record<string, { startTime?: string; endTime?: string }> | null
+   dayOfWeek?: DayOfWeekType | string | null
+   daysOfWeek?: (DayOfWeekType | string)[]
    room?: string | null
    teacherId?: string | null
-   teacher?: {
-      id: string
-      name: string
-   } | null
+   teacher?: Teacher | null
    comments?: LessonComment[]
    cancellations?: LessonCancellation[]
    overrides?: LessonOverride[]
@@ -116,5 +105,5 @@ export interface FormDataState {
    dayOfWeek: string
    daysOfWeek: string[]
    teacherByDay?: Record<string, string[] | string>
-   timeByDay?: Record<string, { startTime: string; endTime: string }>
+   timeByDay?: Record<string, { startTime?: string; endTime?: string }>
 }

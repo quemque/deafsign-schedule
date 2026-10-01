@@ -1,104 +1,58 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useScheduleStore } from '@/stores/useScheduleStore'
+import { useState, useEffect, useMemo } from 'react'
 import {
    useCurrentUserQuery,
    useScheduleLessonsQuery,
-} from '@/hooks/useScheduleQueries'
-import { scheduleApi } from '@/services/scheduleApi'
-import { computeWeekDates, formatWeekLabel } from '@/utils/weekSchedule'
-import { queryKeys } from '@/lib/queryKeys'
+} from './useScheduleQueries'
+import { usePrefetchWeeks } from './usePrefetchWeeks'
+import { useScheduleStore } from '@/stores/useScheduleStore'
+import {
+   getWeekDates,
+   formatWeekLabel,
+   getWeekRangeParams,
+} from '@/utils/scheduleTime'
 
 export function useScheduleData() {
-   const queryClient = useQueryClient()
+   const currentDate = useScheduleStore((state) => state.currentDate)
    const [currentTime, setCurrentTime] = useState(() => new Date())
 
-   const currentDate = useScheduleStore((state) => state.currentDate)
-   const setCurrentDate = useScheduleStore((state) => state.setCurrentDate)
-   const prevWeek = useScheduleStore((state) => state.prevWeek)
-   const nextWeek = useScheduleStore((state) => state.nextWeek)
-   const prevDay = useScheduleStore((state) => state.prevDay)
-   const nextDay = useScheduleStore((state) => state.nextDay)
-   const setToday = useScheduleStore((state) => state.setToday)
-
    useEffect(() => {
-      const interval = setInterval(() => setCurrentTime(new Date()), 60000)
-      return () => clearInterval(interval)
+      const timer = setInterval(() => setCurrentTime(new Date()), 60000)
+      return () => clearInterval(timer)
    }, [])
 
-   const weekDates = useMemo(() => computeWeekDates(currentDate), [currentDate])
+   usePrefetchWeeks(currentDate)
 
-   const currentWeekLabel = useMemo(
-      () => formatWeekLabel(weekDates),
-      [weekDates],
+   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate])
+   const queryParams = useMemo(
+      () => getWeekRangeParams(currentDate),
+      [currentDate],
    )
 
-   const dateRange = useMemo(() => {
-      if (weekDates.length === 0) return undefined
-      const startDate = weekDates[0].dateObj.toISOString()
-      const endDate = weekDates[weekDates.length - 1].dateObj.toISOString()
-      return { startDate, endDate }
-   }, [weekDates])
-
    const { data: user, isLoading: isUserLoading } = useCurrentUserQuery()
-
    const {
-      data: lessons = [],
-      isPending: isLessonsPending,
+      data: visibleLessons = [],
+      isLoading: isLessonsLoading,
       isFetching: isLessonsFetching,
-   } = useScheduleLessonsQuery(dateRange)
+      error: lessonsError,
+      refetch,
+   } = useScheduleLessonsQuery(queryParams)
 
-   useEffect(() => {
-      const prevDate = new Date(currentDate)
-      prevDate.setDate(prevDate.getDate() - 7)
-      const prevWeekDays = computeWeekDates(prevDate)
-      const prevParams = {
-         startDate: prevWeekDays[0].dateObj.toISOString(),
-         endDate: prevWeekDays[prevWeekDays.length - 1].dateObj.toISOString(),
-      }
-
-      const nextDate = new Date(currentDate)
-      nextDate.setDate(nextDate.getDate() + 7)
-      const nextWeekDays = computeWeekDates(nextDate)
-      const nextParams = {
-         startDate: nextWeekDays[0].dateObj.toISOString(),
-         endDate: nextWeekDays[nextWeekDays.length - 1].dateObj.toISOString(),
-      }
-
-      queryClient.prefetchQuery({
-         queryKey: queryKeys.schedule.list(prevParams),
-         queryFn: () => scheduleApi.getSchedule(prevParams),
-         staleTime: 1000 * 60 * 5,
-      })
-
-      queryClient.prefetchQuery({
-         queryKey: queryKeys.schedule.list(nextParams),
-         queryFn: () => scheduleApi.getSchedule(nextParams),
-         staleTime: 1000 * 60 * 5,
-      })
-   }, [currentDate, queryClient])
-
-   const refreshSchedule = () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all })
-   }
+   const currentWeekLabel = useMemo(
+      () => formatWeekLabel(currentDate),
+      [currentDate],
+   )
 
    return {
-      user: user ?? null,
-      loading: isUserLoading || isLessonsPending,
-      isBackgroundUpdating: isLessonsFetching,
-      currentDate,
-      setCurrentDate,
+      user,
+      loading: isUserLoading || isLessonsLoading,
+      isFetching: isLessonsFetching,
+      error: lessonsError instanceof Error ? lessonsError.message : null,
+      refetch,
       currentTime,
       weekDates,
       currentWeekLabel,
-      visibleLessons: lessons,
-      prevWeek,
-      nextWeek,
-      prevDay,
-      nextDay,
-      setToday,
-      refreshSchedule,
+      visibleLessons,
    }
 }

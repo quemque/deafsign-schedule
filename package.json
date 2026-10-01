@@ -9,6 +9,7 @@
       "test:watch": "vitest",
       "start": "next start",
       "lint": "next lint",
+      "typecheck": "tsc --noEmit",
       "db:push": "prisma db push",
       "db:migrate": "prisma migrate dev",
       "db:studio": "prisma studio",

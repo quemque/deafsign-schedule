@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react'
 import type { ApiLesson } from '@/types/schedule'
-import type { DayItem } from '@/utils/scheduleTime'
+import { isLessonOnDay, type DayItem } from '@/utils/scheduleTime'
 import { computeDayLayout } from '@/utils/layout'
-import { getLessonRescheduleTarget, isLessonActiveOnDate } from '@/utils/date'
 import { LessonCard } from './LessonCard'
 import { CurrentTimeIndicator } from './CurrentTimeIndicator'
 
@@ -17,18 +16,6 @@ interface DayColumnProps {
    nowPosition: number
    visibleLessons: ApiLesson[]
 }
-
-const DAY_INDEX_TO_ENUM = [
-   'SUNDAY',
-   'MONDAY',
-   'TUESDAY',
-   'WEDNESDAY',
-   'THURSDAY',
-   'FRIDAY',
-   'SATURDAY',
-]
-
-const DAY_INDEX_TO_SHORT = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 export function DayColumn({
    day,
@@ -43,57 +30,10 @@ export function DayColumn({
    const isNowVisible = nowPosition >= 0 && nowPosition <= totalHeight
 
    const layoutLessons = useMemo(() => {
-      const dayDate = day.dateObj
-      const dayIndex = dayDate.getDay()
-      const dayEnumName = DAY_INDEX_TO_ENUM[dayIndex]
-      const dayShortName = DAY_INDEX_TO_SHORT[dayIndex]
-
-      const yyyy = dayDate.getFullYear()
-      const mm = String(dayDate.getMonth() + 1).padStart(2, '0')
-      const dd = String(dayDate.getDate()).padStart(2, '0')
-      const targetDateKey = `${yyyy}-${mm}-${dd}`
-
-      const rawDayLessons = visibleLessons.filter((lesson) => {
-         const isRescheduled = Boolean(
-            getLessonRescheduleTarget(lesson, dayDate),
-         )
-
-         let matchesDay = false
-
-         if (lesson.isRecurring) {
-            const daysList = (lesson.daysOfWeek || []) as string[]
-            const singleDay = lesson.dayOfWeek as string | null
-
-            const matchesDaysList = daysList.some((d) => {
-               const upper = String(d).toUpperCase()
-               const lower = String(d).toLowerCase()
-               return (
-                  upper === dayEnumName ||
-                  lower === dayShortName ||
-                  lower === day.key.toLowerCase()
-               )
-            })
-
-            const matchesSingle =
-               singleDay &&
-               (String(singleDay).toUpperCase() === dayEnumName ||
-                  String(singleDay).toLowerCase() === dayShortName ||
-                  String(singleDay).toLowerCase() === day.key.toLowerCase())
-
-            matchesDay = Boolean(
-               matchesDaysList || matchesSingle || isRescheduled,
-            )
-         } else {
-            const lessonDateKey = new Date(lesson.startsAt)
-               .toISOString()
-               .split('T')[0]
-            matchesDay = lessonDateKey === targetDateKey || isRescheduled
-         }
-
-         return matchesDay && isLessonActiveOnDate(lesson, dayDate)
-      })
-
-      return computeDayLayout(rawDayLessons, dayDate)
+      const rawDayLessons = visibleLessons.filter((lesson) =>
+         isLessonOnDay(lesson, day),
+      )
+      return computeDayLayout(rawDayLessons, day.dateObj)
    }, [day, visibleLessons])
 
    return (

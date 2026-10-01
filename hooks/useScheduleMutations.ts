@@ -4,32 +4,32 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { scheduleApi } from '@/services/scheduleApi'
 import { queryKeys } from '@/lib/queryKeys'
 import type { DeleteLessonMode } from '@/types/schedule'
-
-interface RescheduleVariables {
-   id: string
-   payload: {
-      originalDate: string
-      newDate: string
-      newStartTime: string
-      newEndTime: string
-   }
-}
+import type {
+   CreateLessonInput,
+   UpdateLessonInput,
+   RescheduleLessonInput,
+   SaveCommentInput,
+} from '@/schemas/schedule.schema'
 
 interface UpdateLessonVariables {
    id: string
-   payload: unknown
+   payload: UpdateLessonInput
+}
+
+interface RescheduleLessonVariables {
+   id: string
+   payload: RescheduleLessonInput
 }
 
 interface DeleteLessonVariables {
    id: string
    mode: DeleteLessonMode
-   date?: Date
+   date?: Date | string
 }
 
 interface SaveCommentVariables {
    lessonId: string
-   date: string
-   text: string
+   payload: SaveCommentInput
 }
 
 export function useScheduleMutations() {
@@ -40,7 +40,8 @@ export function useScheduleMutations() {
    }
 
    const createLessonMutation = useMutation({
-      mutationFn: (payload: unknown) => scheduleApi.createLesson(payload),
+      mutationFn: (payload: CreateLessonInput) =>
+         scheduleApi.createLesson(payload),
       onSuccess: invalidateSchedule,
    })
 
@@ -51,7 +52,7 @@ export function useScheduleMutations() {
    })
 
    const rescheduleLessonMutation = useMutation({
-      mutationFn: ({ id, payload }: RescheduleVariables) =>
+      mutationFn: ({ id, payload }: RescheduleLessonVariables) =>
          scheduleApi.rescheduleLesson(id, payload),
       onSuccess: invalidateSchedule,
    })
@@ -63,8 +64,8 @@ export function useScheduleMutations() {
    })
 
    const saveCommentMutation = useMutation({
-      mutationFn: ({ lessonId, date, text }: SaveCommentVariables) =>
-         scheduleApi.saveComment(lessonId, date, text),
+      mutationFn: ({ lessonId, payload }: SaveCommentVariables) =>
+         scheduleApi.saveComment(lessonId, payload),
       onSuccess: invalidateSchedule,
    })
 
@@ -73,7 +74,15 @@ export function useScheduleMutations() {
       updateLesson: updateLessonMutation.mutateAsync,
       rescheduleLesson: rescheduleLessonMutation.mutateAsync,
       deleteLesson: deleteLessonMutation.mutateAsync,
-      saveComment: saveCommentMutation.mutateAsync,
+      saveComment: (variables: {
+         lessonId: string
+         date: string
+         text: string
+      }) =>
+         saveCommentMutation.mutateAsync({
+            lessonId: variables.lessonId,
+            payload: { date: variables.date, text: variables.text },
+         }),
       isCreating: createLessonMutation.isPending,
       isUpdating: updateLessonMutation.isPending,
       isDeleting: deleteLessonMutation.isPending,

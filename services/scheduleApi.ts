@@ -2,6 +2,9 @@ import type { ApiLesson, DeleteLessonMode } from '@/types/schedule'
 import type {
    CreateLessonInput,
    UpdateLessonInput,
+   RescheduleLessonInput,
+   SaveCommentInput,
+   ScheduleListQueryParams,
 } from '@/schemas/schedule.schema'
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -25,25 +28,24 @@ function formatDateKey(date?: Date | string | null): string | undefined {
 }
 
 async function getLessons(
-   startDateOrParams?: string | { startDate?: string; endDate?: string },
+   paramsOrStart?: ScheduleListQueryParams | string,
    endDateArg?: string,
 ): Promise<{ lessons: ApiLesson[] }> {
-   let start: string | undefined
-   let end: string | undefined
+   let startDate: string | undefined
+   let endDate: string | undefined
 
-   if (typeof startDateOrParams === 'object' && startDateOrParams !== null) {
-      start = startDateOrParams.startDate
-      end = startDateOrParams.endDate
+   if (typeof paramsOrStart === 'object' && paramsOrStart !== null) {
+      startDate = paramsOrStart.startDate
+      endDate = paramsOrStart.endDate
    } else {
-      start = startDateOrParams
-      end = endDateArg
+      startDate = paramsOrStart
+      endDate = endDateArg
    }
 
-   const params = new URLSearchParams()
-   if (start) params.set('startDate', start)
-   if (end) params.set('endDate', end)
-   const query = params.toString() ? `?${params.toString()}` : ''
-
+   const searchParams = new URLSearchParams()
+   if (startDate) searchParams.set('startDate', startDate)
+   if (endDate) searchParams.set('endDate', endDate)
+   const query = searchParams.toString() ? `?${searchParams.toString()}` : ''
    return request<{ lessons: ApiLesson[] }>(`/api/schedule${query}`)
 }
 
@@ -74,12 +76,7 @@ export const scheduleApi = {
 
    async rescheduleLesson(
       id: string,
-      payload: {
-         originalDate: string
-         newDate: string
-         newStartTime: string
-         newEndTime: string
-      },
+      payload: RescheduleLessonInput,
    ): Promise<{ success: boolean }> {
       return request<{ success: boolean }>(`/api/schedule/${id}/reschedule`, {
          method: 'POST',
@@ -90,40 +87,23 @@ export const scheduleApi = {
 
    async saveComment(
       lessonId: string,
-      date: string,
-      text: string,
+      payload: SaveCommentInput,
    ): Promise<{ success: boolean }> {
       return request<{ success: boolean }>(
          `/api/schedule/${lessonId}/comment`,
          {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date, text }),
+            body: JSON.stringify(payload),
          },
       )
    },
 
    async deleteLesson(
-      idOrParams:
-         | string
-         | { id: string; mode: DeleteLessonMode; date?: Date | string },
-      modeArg?: DeleteLessonMode,
-      dateArg?: Date | string,
+      id: string,
+      mode: DeleteLessonMode = 'all',
+      date?: Date | string,
    ): Promise<{ success: boolean }> {
-      let id: string
-      let mode: DeleteLessonMode = 'all'
-      let date: Date | string | undefined
-
-      if (typeof idOrParams === 'object') {
-         id = idOrParams.id
-         mode = idOrParams.mode || 'all'
-         date = idOrParams.date
-      } else {
-         id = idOrParams
-         mode = modeArg || 'all'
-         date = dateArg
-      }
-
       const params = new URLSearchParams({ mode })
       const formattedDate = formatDateKey(date)
       if (formattedDate && mode !== 'all') {

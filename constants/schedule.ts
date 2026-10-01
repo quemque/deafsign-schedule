@@ -12,7 +12,15 @@ export const monthNames = [
    'ноября',
    'декабря',
 ]
-
+export const WEEK_DAY_CONFIG = [
+   { key: 'mon', label: 'Пн', short: 'ПН' },
+   { key: 'tue', label: 'Вт', short: 'ВТ' },
+   { key: 'wed', label: 'Ср', short: 'СР' },
+   { key: 'thu', label: 'Чт', short: 'ЧТ' },
+   { key: 'fri', label: 'Пт', short: 'ПТ' },
+   { key: 'sat', label: 'Сб', short: 'СБ' },
+   { key: 'sun', label: 'Вс', short: 'ВС' },
+]
 export const DAYS_OF_WEEK = [
    { key: 'MONDAY', label: 'Понедельник', short: 'ПН' },
    { key: 'TUESDAY', label: 'Вторник', short: 'ВТ' },
