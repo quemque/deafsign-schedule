@@ -11,39 +11,48 @@ export function ScheduleHeader({ isAdmin }: ScheduleHeaderProps) {
    const router = useRouter()
 
    return (
-      <header className="shrink-0 bg-[#FDFCFB]/90 backdrop-blur-md border-b border-[#E5E0D8] px-2.5 sm:px-4 py-1.5 sm:py-2 z-40">
-         <div className="w-full max-w-[1600px] mx-auto flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#8BA888] flex items-center justify-center text-white shrink-0">
-                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      <header className="relative z-40 shrink-0 border-b border-[#E5E0D8] bg-[#FDFCFB]/95 px-3 py-2.5 backdrop-blur-md sm:px-5">
+         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8BA888] text-white shadow-sm shadow-[#536F52]/20 sm:h-10 sm:w-10">
+                  <Calendar
+                     className="h-[18px] w-[18px] sm:h-5 sm:w-5"
+                     strokeWidth={1.8}
+                  />
                </div>
-               <div>
-                  <h1 className="text-xs sm:text-sm font-bold leading-tight text-[#3E3A35]">
+               <div className="min-w-0">
+                  <h1 className="text-sm font-bold leading-tight tracking-[-0.02em] text-[#3E3A35] sm:text-base">
                      Расписание
                   </h1>
-                  <p className="text-[10px] sm:text-[11px] text-[#8B857D] leading-none">
+                  <p className="mt-0.5 text-[11px] leading-tight text-[#8B857D] sm:text-xs">
                      Все занятия
                   </p>
                </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                {isAdmin && (
                   <button
                      type="button"
                      onClick={() => router.push('/admin')}
-                     className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-lg transition-colors flex items-center gap-1.5"
+                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E0D8] bg-white/70 p-2 text-xs font-semibold text-[#3E3A35] transition-colors hover:border-[#C8D4C5] hover:bg-[#F3F6F1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6E8B6A] focus-visible:ring-offset-2 sm:px-3"
                   >
-                     <Shield className="w-3.5 h-3.5 text-[#8BA888]" />
+                     <Shield
+                        className="h-4 w-4 text-[#6F8D6B]"
+                        strokeWidth={1.8}
+                     />
                      <span className="hidden sm:inline">Админ-панель</span>
                   </button>
                )}
                <button
                   type="button"
                   onClick={() => router.push('/profile')}
-                  className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold bg-[#F5F2ED] hover:bg-[#EDE8E0] text-[#3E3A35] rounded-lg flex items-center gap-1.5 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E5E0D8] bg-white/70 p-2 text-xs font-semibold text-[#3E3A35] transition-colors hover:border-[#C8D4C5] hover:bg-[#F3F6F1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6E8B6A] focus-visible:ring-offset-2 sm:px-3"
                >
-                  <UserIcon className="w-3.5 h-3.5" />
+                  <UserIcon
+                     className="h-4 w-4 text-[#6F8D6B]"
+                     strokeWidth={1.8}
+                  />
                   <span className="hidden sm:inline">Профиль</span>
                </button>
             </div>
