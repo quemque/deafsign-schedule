@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Info, BookOpen, MessageSquare } from 'lucide-react'
 import {
    formatDateKey,
@@ -9,6 +9,7 @@ import {
    resolveLessonDisplayTimes,
    resolveLessonTeacher,
 } from '@/utils/lesson'
+import { createHomeworkMailtoUrl } from '@/utils/homeworkEmail'
 import { useModalStore } from '@/stores/useModalStore'
 import { useCurrentUserQuery } from '@/hooks/useScheduleQueries'
 import { useScheduleMutations } from '@/hooks/useScheduleMutations'
@@ -17,6 +18,7 @@ import { LessonInfoGrid } from './modal/LessonInfoGrid'
 import { LessonCommentSection } from './modal/LessonCommentSection'
 import { LessonDetailsFooter } from './modal/LessonDetailsFooter'
 import { HomeworkTab } from './homework/HomeworkTab'
+import { SubmitHomeworkButton } from './homework/SubmitHomeworkButton'
 
 type ModalTab = 'info' | 'homework' | 'note'
 
@@ -36,7 +38,13 @@ export function LessonDetailsModal() {
    const [activeTab, setActiveTab] = useState<ModalTab>('info')
    const [commentText, setCommentText] = useState('')
 
-   const displayDate = date || (lesson ? new Date(lesson.startsAt) : new Date())
+   const displayDate = useMemo(() => {
+      if (date) return date
+      if (lesson) return new Date(lesson.startsAt)
+      return new Date()
+   }, [date, lesson])
+
+   const dateKey = useMemo(() => formatDateKey(displayDate), [displayDate])
 
    useEffect(() => {
       if (!lesson || !isOpen) return
@@ -45,13 +53,21 @@ export function LessonDetailsModal() {
       setActiveTab('info')
    }, [lesson, isOpen, displayDate])
 
+   const homeworkMailtoUrl = useMemo(() => {
+      if (!lesson) return ''
+
+      return createHomeworkMailtoUrl({
+         lessonSubject: lesson.subject,
+         lessonDate: dateKey,
+      })
+   }, [lesson, dateKey])
+
    if (!isOpen || !lesson) return null
 
    const isAdmin = user?.role === 'ADMIN'
    const isTeacher = user?.role === 'TEACHER'
    const canManage = isAdmin || isTeacher
 
-   const dateKey = formatDateKey(displayDate)
    const teacherName = resolveLessonTeacher(lesson, displayDate)
    const { startsAt, endsAt, isRescheduled } = resolveLessonDisplayTimes(
       lesson,
@@ -151,11 +167,18 @@ export function LessonDetailsModal() {
                )}
 
                {activeTab === 'homework' && (
-                  <HomeworkTab
-                     lessonId={lesson.id}
-                     date={dateKey}
-                     canEdit={canManage}
-                  />
+                  <div className="flex flex-col gap-4">
+                     <HomeworkTab
+                        lessonId={lesson.id}
+                        date={dateKey}
+                        canEdit={canManage}
+                     />
+                     {!canManage && (
+                        <div className="pt-3 border-t border-[#F0EDE8] flex justify-end">
+                           <SubmitHomeworkButton href={homeworkMailtoUrl} />
+                        </div>
+                     )}
+                  </div>
                )}
 
                {activeTab === 'note' && canManage && (

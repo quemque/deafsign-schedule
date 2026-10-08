@@ -12,6 +12,7 @@ export type DeleteLessonMode = 'this' | 'future' | 'all'
 export interface Teacher {
    id: string
    name: string
+   email?: string | null
 }
 
 export interface CurrentUser {
