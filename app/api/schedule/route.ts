@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma, DayOfWeek } from '@prisma/client'
 import { withAuth, parseJsonBody, parseQueryParams } from '@/lib/apiGuard'
+import { getCurrentUser } from '@/lib/auth'
 import {
    createLessonSchema,
    scheduleListQuerySchema,
@@ -45,8 +46,21 @@ export async function GET(req: NextRequest) {
          return parsed.errorResponse
       }
 
+      const currentUser = await getCurrentUser()
       const { startDate, endDate } = parsed.data
-      const whereClause: Prisma.LessonWhereInput = {}
+
+      const andConditions: Prisma.LessonWhereInput[] = []
+
+      if (
+         currentUser &&
+         currentUser.role === 'USER' &&
+         Array.isArray(currentUser.groups) &&
+         currentUser.groups.length > 0
+      ) {
+         andConditions.push({
+            subject: { in: currentUser.groups },
+         })
+      }
 
       let dateFilter: { gte: Date; lte: Date } | undefined
 
@@ -59,35 +73,40 @@ export async function GET(req: NextRequest) {
 
          dateFilter = { gte: rangeStart, lte: rangeEnd }
 
-         whereClause.OR = [
-            {
-               isRecurring: true,
-               startsAt: { lte: rangeEnd },
-               OR: [{ endDate: null }, { endDate: { gte: rangeStart } }],
-            },
-            {
-               isRecurring: false,
-               startsAt: {
-                  gte: rangeStart,
-                  lte: rangeEnd,
+         andConditions.push({
+            OR: [
+               {
+                  isRecurring: true,
+                  startsAt: { lte: rangeEnd },
+                  OR: [{ endDate: null }, { endDate: { gte: rangeStart } }],
                },
-            },
-            {
-               reschedules: {
-                  some: {
-                     newStartsAt: {
-                        gte: rangeStart,
-                        lte: rangeEnd,
+               {
+                  isRecurring: false,
+                  startsAt: {
+                     gte: rangeStart,
+                     lte: rangeEnd,
+                  },
+               },
+               {
+                  reschedules: {
+                     some: {
+                        newStartsAt: {
+                           gte: rangeStart,
+                           lte: rangeEnd,
+                        },
                      },
                   },
                },
-            },
-         ]
+            ],
+         })
       }
+
+      const whereClause: Prisma.LessonWhereInput =
+         andConditions.length > 0 ? { AND: andConditions } : {}
 
       const relationsInclude: Prisma.LessonInclude = dateFilter
          ? {
-              teacher: { select: { id: true, name: true } },
+              teacher: { select: { id: true, name: true, email: true } },
               comments: { where: { date: dateFilter } },
               cancellations: { where: { date: dateFilter } },
               overrides: { where: { date: dateFilter } },
@@ -101,7 +120,7 @@ export async function GET(req: NextRequest) {
               },
            }
          : {
-              teacher: { select: { id: true, name: true } },
+              teacher: { select: { id: true, name: true, email: true } },
               comments: true,
               cancellations: true,
               overrides: true,
@@ -251,7 +270,7 @@ export const POST = withAuth(['ADMIN'], async (req, { user }) => {
             createdBy: user.id,
          },
          include: {
-            teacher: { select: { id: true, name: true } },
+            teacher: { select: { id: true, name: true, email: true } },
             comments: true,
             cancellations: true,
             overrides: true,

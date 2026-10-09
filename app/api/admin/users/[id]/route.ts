@@ -44,6 +44,9 @@ export const PATCH = withAuth<{ id: string }>(
          if (body.login) updateData.login = body.login
          if (body.email) updateData.email = body.email
          if (body.role) updateData.role = body.role
+         if (Array.isArray(body.groups)) {
+            updateData.groups = { set: body.groups }
+         }
          if (typeof body.isActive === 'boolean')
             updateData.isActive = body.isActive
          if (body.password) {
@@ -60,6 +63,7 @@ export const PATCH = withAuth<{ id: string }>(
                   login: true,
                   name: true,
                   role: true,
+                  groups: true,
                   isActive: true,
                },
             })

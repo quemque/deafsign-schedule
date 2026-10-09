@@ -12,6 +12,7 @@ export const GET = withAuth(['ADMIN'], async () => {
          login: true,
          name: true,
          role: true,
+         groups: true,
          isActive: true,
          createdAt: true,
          lastLoginAt: true,
@@ -28,7 +29,7 @@ export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
       return parsed.errorResponse
    }
 
-   const { email, login, password, name, role } = parsed.data
+   const { email, login, password, name, role, groups = [] } = parsed.data
 
    try {
       const existing = await prisma.user.findFirst({
@@ -52,6 +53,7 @@ export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
                passwordHash,
                name,
                role,
+               groups,
             },
             select: {
                id: true,
@@ -59,6 +61,8 @@ export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
                login: true,
                name: true,
                role: true,
+               groups: true,
+               isActive: true,
             },
          })
 
@@ -68,7 +72,7 @@ export const POST = withAuth(['ADMIN'], async (req, { user: adminUser }) => {
                entity: 'user',
                entityId: user.id,
                userId: adminUser.id,
-               metadata: { role: user.role },
+               metadata: { role: user.role, groupsCount: user.groups.length },
             },
          })
 
