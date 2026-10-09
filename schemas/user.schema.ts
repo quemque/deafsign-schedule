@@ -11,15 +11,18 @@ export const createUserSchema = z.object({
    password: z.string().min(6, 'Пароль должен быть не короче 6 символов'),
    name: z.string().trim().min(1, 'Укажите ФИО пользователя'),
    role: z.nativeEnum(Role).default(Role.USER),
+   groups: z.array(z.string()).optional().default([]),
+   isActive: z.boolean().optional().default(true),
 })
 
 export const updateUserSchema = z.object({
-   name: z.string().trim().min(1).optional(),
-   login: z.string().trim().min(3).max(50).optional(),
-   email: z.string().trim().email().optional(),
-   role: z.nativeEnum(Role).optional(),
+   name: z.string().min(1).optional(),
+   login: z.string().min(1).optional(),
+   email: z.string().email().optional(),
+   password: z.string().min(6).optional().or(z.literal('')),
+   role: z.enum(['ADMIN', 'TEACHER', 'USER']).optional(),
+   groups: z.array(z.string()).optional(),
    isActive: z.boolean().optional(),
-   password: z.string().min(6).optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>
