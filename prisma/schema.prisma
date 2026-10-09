@@ -41,11 +41,12 @@ model User {
   phone        String?
   avatarUrl    String?
   role         Role      @default(USER)
+  groups       String[]  @default([])
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 
-  taughtLessons  Lesson[]        @relation("TeacherLessons")
-  createdLessons Lesson[]        @relation("CreatedLessons")
+  taughtLessons  Lesson[]       @relation("TeacherLessons")
+  createdLessons Lesson[]       @relation("CreatedLessons")
   comments       Comment[]
   notes          TeacherNote[]
   notifications  Notification[]
