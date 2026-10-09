@@ -68,6 +68,7 @@ export const getCurrentUser = async () => {
          name: true,
          role: true,
          isActive: true,
+         groups: true,
       },
    })
 

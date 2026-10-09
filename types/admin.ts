@@ -5,10 +5,9 @@ export interface AdminUser {
    email: string
    login: string
    name: string
-   role: UserRole | string
+   role: 'ADMIN' | 'TEACHER' | 'USER'
+   groups?: string[]
    isActive: boolean
-   createdAt: string
-   lastLoginAt: string | null
 }
 
 export interface UserFormData {
@@ -16,6 +15,7 @@ export interface UserFormData {
    login: string
    password?: string
    name: string
-   role: string
+   role: 'ADMIN' | 'TEACHER' | 'USER'
+   groups: string[]
    isActive: boolean
 }
