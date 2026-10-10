@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import {
    useHomeworkQuery,
@@ -16,9 +16,15 @@ interface HomeworkTabProps {
    lessonId: string
    date: string
    canEdit: boolean
+   onHasHomeworkChange?: (hasHomework: boolean) => void
 }
 
-export function HomeworkTab({ lessonId, date, canEdit }: HomeworkTabProps) {
+export function HomeworkTab({
+   lessonId,
+   date,
+   canEdit,
+   onHasHomeworkChange,
+}: HomeworkTabProps) {
    const { data, isLoading } = useHomeworkQuery(lessonId, date)
    const {
       createHomework,
@@ -33,6 +39,12 @@ export function HomeworkTab({ lessonId, date, canEdit }: HomeworkTabProps) {
 
    const homeworks = data?.homeworks || []
    const isFormOpen = isCreatingNew || editingItem !== null
+
+   useEffect(() => {
+      if (!isLoading) {
+         onHasHomeworkChange?.(homeworks.length > 0)
+      }
+   }, [homeworks.length, isLoading, onHasHomeworkChange])
 
    const handleFormSubmit = async ({
       title,

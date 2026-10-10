@@ -37,6 +37,7 @@ export function LessonDetailsModal() {
 
    const [activeTab, setActiveTab] = useState<ModalTab>('info')
    const [commentText, setCommentText] = useState('')
+   const [hasHomework, setHasHomework] = useState(false)
 
    const displayDate = useMemo(() => {
       if (date) return date
@@ -51,6 +52,7 @@ export function LessonDetailsModal() {
       const currentComment = resolveLessonComment(lesson, displayDate)
       setCommentText(currentComment)
       setActiveTab('info')
+      setHasHomework(false)
    }, [lesson, isOpen, displayDate])
 
    const homeworkMailtoUrl = useMemo(() => {
@@ -172,8 +174,9 @@ export function LessonDetailsModal() {
                         lessonId={lesson.id}
                         date={dateKey}
                         canEdit={canManage}
+                        onHasHomeworkChange={setHasHomework}
                      />
-                     {!canManage && (
+                     {!canManage && hasHomework && (
                         <div className="pt-3 border-t border-[#F0EDE8] flex justify-end">
                            <SubmitHomeworkButton href={homeworkMailtoUrl} />
                         </div>
