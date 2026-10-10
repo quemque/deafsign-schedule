@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
    Play,
    Pause,
@@ -11,14 +12,41 @@ import {
    Volume2,
    VolumeX,
    ZoomIn,
+   VideoOff,
+   Loader2,
 } from 'lucide-react'
 import { useVideoPlayer } from './useVideoPlayer'
 
 interface SignVideoPlayerProps {
-   src: string
+   src?: string | null
+   videoKey?: string | null
 }
 
-export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
+export function SignVideoPlayer({ src, videoKey }: SignVideoPlayerProps) {
+   const [secureUrl, setSecureUrl] = useState<string | null>(null)
+   const [isLoadingKey, setIsLoadingKey] = useState(false)
+
+   useEffect(() => {
+      if (!videoKey) return
+
+      let isMounted = true
+      setIsLoadingKey(true)
+
+      fetch(`/api/s3/presign?key=${encodeURIComponent(videoKey)}`)
+         .then((r) => (r.ok ? r.json() : null))
+         .then((d) => {
+            if (isMounted && d?.url) setSecureUrl(d.url)
+         })
+         .catch(() => {})
+         .finally(() => {
+            if (isMounted) setIsLoadingKey(false)
+         })
+
+      return () => {
+         isMounted = false
+      }
+   }, [videoKey])
+
    const {
       videoRef,
       containerRef,
@@ -42,12 +70,39 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
       formattedTime,
    } = useVideoPlayer()
 
+   const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault()
+   }
+
+   const finalSrc = secureUrl || src
+
+   if (isLoadingKey && !secureUrl) {
+      return (
+         <div className="aspect-video sm:aspect-16/10 bg-neutral-900 flex flex-col items-center justify-center text-neutral-500 rounded-xl border border-neutral-800 select-none">
+            <Loader2 className="w-6 h-6 animate-spin mb-2 opacity-60 text-[#8BA888]" />
+            <span className="text-xs font-medium">
+               Защищенное подключение...
+            </span>
+         </div>
+      )
+   }
+
+   if (!finalSrc) {
+      return (
+         <div className="aspect-video sm:aspect-16/10 bg-neutral-900 flex flex-col items-center justify-center text-neutral-500 rounded-xl border border-neutral-800 select-none">
+            <VideoOff className="w-8 h-8 mb-2 opacity-50" />
+            <span className="text-xs font-medium">Видео недоступно</span>
+         </div>
+      )
+   }
+
    return (
       <div
          ref={containerRef}
+         onContextMenu={handleContextMenu}
          className={`relative flex flex-col bg-black overflow-hidden shadow-xs select-none ${
             isFullscreen
-               ? 'fixed inset-0 z-9999 w-full h-full rounded-none'
+               ? 'fixed inset-0 z-[9999] w-full h-full rounded-none'
                : '-mx-3.5 sm:mx-0 rounded-none sm:rounded-xl'
          }`}
       >
@@ -61,9 +116,12 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
          >
             <video
                ref={videoRef}
-               src={src}
+               src={finalSrc}
                playsInline
-               className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 origin-center"
+               controlsList="nodownload noremoteplayback"
+               disablePictureInPicture
+               onContextMenu={handleContextMenu}
+               className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-300 origin-center pointer-events-auto"
                style={{ transform: videoTransform }}
             />
 
@@ -76,7 +134,7 @@ export function SignVideoPlayer({ src }: SignVideoPlayerProps) {
             )}
          </div>
 
-         <div className="p-2 sm:p-2.5 bg-neutral-900 border-t border-neutral-800 flex flex-col gap-1.5 shrink-0">
+         <div className="p-2 sm:p-2.5 bg-neutral-900 border-t border-neutral-800 flex flex-col gap-1.5 shrink-0 pointer-events-auto">
             <input
                type="range"
                min={0}

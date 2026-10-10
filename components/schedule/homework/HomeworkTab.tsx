@@ -57,14 +57,22 @@ export function HomeworkTab({
       videos: HomeworkVideoItem[]
       unlockDate: string | null
    }) => {
+      const sanitizedVideos = videos.map((v) => ({
+         ...v,
+         url: v.url?.trim() || '',
+      }))
+
+      const firstVideoUrl = sanitizedVideos[0]?.url || null
+      const firstVideoKey = sanitizedVideos[0]?.key || null
+
       if (editingItem) {
          await updateHomework({
             id: editingItem.id,
             title: title || null,
             description,
-            videos,
-            videoUrl: videos[0]?.url || null,
-            videoKey: videos[0]?.key || null,
+            videos: sanitizedVideos,
+            videoUrl: firstVideoUrl,
+            videoKey: firstVideoKey,
             unlockDate,
          })
       } else {
@@ -72,9 +80,9 @@ export function HomeworkTab({
             date,
             title: title || null,
             description,
-            videos,
-            videoUrl: videos[0]?.url || null,
-            videoKey: videos[0]?.key || null,
+            videos: sanitizedVideos,
+            videoUrl: firstVideoUrl,
+            videoKey: firstVideoKey,
             unlockDate,
          })
       }

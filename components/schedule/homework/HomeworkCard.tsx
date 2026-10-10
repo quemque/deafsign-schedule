@@ -113,7 +113,10 @@ export function HomeworkCard({
                            <Video className="w-3.5 h-3.5" />
                            {currentVideo.title || 'Видеоматериал'}
                         </span>
-                        <SignVideoPlayer src={currentVideo.url} />
+                        <SignVideoPlayer
+                           src={currentVideo.url}
+                           videoKey={currentVideo.key}
+                        />
                      </div>
                   )}
                </div>
@@ -130,12 +133,16 @@ export function HomeworkCard({
                         <div
                            key={img.id}
                            onClick={() => setActivePreviewImage(img.url)}
-                           className="group relative aspect-square rounded-xl overflow-hidden border border-[#E5E0D8] bg-[#FAF8F5] cursor-pointer hover:border-[#8BA888] transition-colors"
+                           onContextMenu={(e) => e.preventDefault()}
+                           className="group relative aspect-square rounded-xl overflow-hidden border border-[#E5E0D8] bg-[#FAF8F5] cursor-pointer hover:border-[#8BA888] transition-colors select-none"
+                           style={{ WebkitTouchCallout: 'none' }}
                         >
                            <img
                               src={img.url}
                               alt={img.title || 'Материал к уроку'}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                              draggable={false}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
+                              style={{ WebkitTouchCallout: 'none' }}
                            />
                            {img.title && (
                               <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-[9px] text-white truncate">
@@ -148,8 +155,8 @@ export function HomeworkCard({
                </div>
             )}
 
-            <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E5E0D8]">
-               <p className="text-xs text-[#3E3A35] whitespace-pre-wrap leading-relaxed">
+            <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E5E0D8] select-none">
+               <p className="text-xs text-[#3E3A35] whitespace-pre-wrap leading-relaxed pointer-events-none">
                   {item.description}
                </p>
             </div>
