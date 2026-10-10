@@ -1,5 +1,3 @@
-export type UserRole = 'ADMIN' | 'TEACHER' | 'USER'
-
 export interface AdminUser {
    id: string
    email: string
