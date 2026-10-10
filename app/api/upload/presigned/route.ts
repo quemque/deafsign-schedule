@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { withAuth, parseJsonBody } from '@/lib/apiGuard'
 import { presignedUploadSchema } from '@/schemas/homework.schema'
-import { createPresignedUploadUrl } from '@/lib/s3'
+import { createPresignedUploadUrl, createPresignedDownloadUrl } from '@/lib/s3'
 
 export const POST = withAuth(['ADMIN', 'TEACHER'], async (req) => {
    const parsed = await parseJsonBody(req, presignedUploadSchema)
@@ -21,7 +21,16 @@ export const POST = withAuth(['ADMIN', 'TEACHER'], async (req) => {
          uniqueKey,
          fileType,
       )
-      return NextResponse.json({ uploadUrl, publicUrl, key })
+
+      const previewUrl = isImage
+         ? publicUrl
+         : await createPresignedDownloadUrl(key)
+
+      return NextResponse.json({
+         uploadUrl,
+         publicUrl: previewUrl,
+         key,
+      })
    } catch (error) {
       console.error(error)
       return NextResponse.json(

@@ -2,6 +2,7 @@ import {
    S3Client,
    PutObjectCommand,
    DeleteObjectCommand,
+   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -31,6 +32,17 @@ export async function createPresignedUploadUrl(
    const publicUrl = `${endpoint}/${BUCKET_NAME}/${key}`
 
    return { uploadUrl, publicUrl, key }
+}
+
+export async function createPresignedDownloadUrl(key: string): Promise<string> {
+   if (!key || !BUCKET_NAME) return ''
+
+   const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+   })
+
+   return getSignedUrl(s3Client, command, { expiresIn: 3600 })
 }
 
 export async function deleteS3File(key: string) {
